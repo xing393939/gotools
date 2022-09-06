@@ -63,7 +63,8 @@ func main() {
 	}
 
 	args := flag.Args()
-	analysisObj := callvis.NewAnalysis(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
+	analysisObj := new(callvis.Analysis)
+	analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
 	if err := analysisObj.DoAnalysis(callvis.CallGraphType(*callgraphAlgo), "", *testFlag, args); err != nil {
 		log.Fatal(err)
 	}
@@ -75,6 +76,7 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
+		analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
 		analysisObj.OverrideByHTTP(r)
 		img, err := analysisObj.OutputDot("output", *outputFormat)
 		if err != nil {

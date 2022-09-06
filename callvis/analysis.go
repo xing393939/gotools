@@ -3,6 +3,7 @@ package callvis
 import (
 	"errors"
 	"fmt"
+	"github.com/xing393939/gotools/calldot"
 	"go/build"
 	"go/types"
 	"golang.org/x/tools/go/callgraph"
@@ -143,9 +144,8 @@ func (a *Analysis) DoAnalysis(
 	return nil
 }
 
-func NewAnalysis(cacheDir, focusFlag, groupFlag, ignoreFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) *Analysis {
-	analysisObj := new(Analysis)
-	analysisObj.opts = &renderOpts{
+func (a *Analysis) OptsSetup(cacheDir, focusFlag, groupFlag, ignoreFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) {
+	a.opts = &renderOpts{
 		cacheDir: cacheDir,
 		focus:    focusFlag,
 		group:    []string{groupFlag},
@@ -155,7 +155,6 @@ func NewAnalysis(cacheDir, focusFlag, groupFlag, ignoreFlag, includeFlag, limitF
 		nointer:  nointerFlag,
 		nostd:    nostdFlag,
 	}
-	return analysisObj
 }
 
 func (a *Analysis) ProcessListArgs() (e error) {
@@ -312,7 +311,7 @@ func (a *Analysis) OutputDot(fname string, outputFormat string) (img string, err
 	}
 	log.Printf("converting dot to %s..\n", outputFormat)
 
-	img, err = DotToImage(fname, outputFormat, output)
+	img, err = calldot.DotToImage(fname, outputFormat, output)
 	_ = a.CacheImg(img, outputFormat)
 	return
 }

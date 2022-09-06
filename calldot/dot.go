@@ -1,4 +1,4 @@
-package callvis
+package calldot
 
 import (
 	"bytes"
@@ -80,7 +80,7 @@ const tmplGraph = `digraph gocallvis {
 type dotCluster struct {
 	ID       string
 	Clusters map[string]*dotCluster
-	Nodes    []*dotNode
+	Nodes    []*DotNode
 	Attrs    dotAttrs
 }
 
@@ -92,24 +92,28 @@ func NewDotCluster(id string) *dotCluster {
 	}
 }
 
+func (c *dotCluster) SetAttrs(attrs map[string]string) {
+	c.Attrs = attrs
+}
+
 func (c *dotCluster) String() string {
 	return fmt.Sprintf("cluster_%s", c.ID)
 }
 
-//==[ type def/func: dotNode    ]===============================================
-type dotNode struct {
+//==[ type def/func: DotNode    ]===============================================
+type DotNode struct {
 	ID    string
 	Attrs dotAttrs
 }
 
-func (n *dotNode) String() string {
+func (n *DotNode) String() string {
 	return n.ID
 }
 
-//==[ type def/func: dotEdge    ]===============================================
-type dotEdge struct {
-	From  *dotNode
-	To    *dotNode
+//==[ type def/func: DotEdge    ]===============================================
+type DotEdge struct {
+	From  *DotNode
+	To    *DotNode
 	Attrs dotAttrs
 }
 
@@ -138,9 +142,26 @@ type dotGraph struct {
 	Minlen  uint
 	Attrs   dotAttrs
 	Cluster *dotCluster
-	Nodes   []*dotNode
-	Edges   []*dotEdge
+	Nodes   []*DotNode
+	Edges   []*DotEdge
 	Options map[string]string
+}
+
+func NewDotGraph(title string, c *dotCluster, nodes []*DotNode, edges []*DotEdge) *dotGraph {
+	return &dotGraph{
+		Title:   title,
+		Cluster: c,
+		Nodes:   nodes,
+		Edges:   edges,
+		Minlen:  minlen,
+		Options: map[string]string{
+			"minlen":    fmt.Sprint(minlen),
+			"nodesep":   fmt.Sprint(nodesep),
+			"nodeshape": fmt.Sprint(nodeshape),
+			"nodestyle": fmt.Sprint(nodestyle),
+			"rankdir":   fmt.Sprint(rankdir),
+		},
+	}
 }
 
 func (g *dotGraph) WriteDot(w io.Writer) error {

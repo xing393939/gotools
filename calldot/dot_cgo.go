@@ -1,7 +1,7 @@
 //go:build cgo
 // +build cgo
 
-package callvis
+package calldot
 
 import (
 	"fmt"

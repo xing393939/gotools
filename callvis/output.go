@@ -3,6 +3,7 @@ package callvis
 import (
 	"bytes"
 	"fmt"
+	"github.com/xing393939/gotools/calldot"
 	"go/build"
 	"go/types"
 	"path/filepath"
@@ -43,26 +44,22 @@ func printOutput(
 		}
 	}
 
-	cluster := NewDotCluster("focus")
-	cluster.Attrs = dotAttrs{
+	cluster := calldot.NewDotCluster("focus")
+	cluster.SetAttrs(map[string]string{
 		"bgcolor":   "white",
 		"label":     "",
 		"labelloc":  "t",
 		"labeljust": "c",
 		"fontsize":  "18",
-	}
-	if focusPkg != nil {
-		cluster.Attrs["bgcolor"] = "#e6ecfa"
-		cluster.Attrs["label"] = focusPkg.Name()
-	}
+	})
 
 	var (
-		nodes []*dotNode
-		edges []*dotEdge
+		nodes []*calldot.DotNode
+		edges []*calldot.DotEdge
 	)
 
-	nodeMap := make(map[string]*dotNode)
-	edgeMap := make(map[string]*dotEdge)
+	nodeMap := make(map[string]*calldot.DotNode)
+	edgeMap := make(map[string]*calldot.DotEdge)
 
 	cg.DeleteSyntheticNodes()
 
@@ -206,7 +203,7 @@ func printOutput(
 		//logf("call node: %s -> %s\n %v", caller, callee, string(data))
 		logf("call node: %s -> %s (%s -> %s) %v\n", caller.Func.Pkg, callee.Func.Pkg, caller, callee, filenameCaller)
 
-		var sprintNode = func(node *callgraph.Node, isCaller bool) *dotNode {
+		var sprintNode = func(node *callgraph.Node, isCaller bool) *calldot.DotNode {
 			// only once
 			key := node.Func.String()
 			nodeTooltip := ""
@@ -227,7 +224,7 @@ func printOutput(
 			// is focused
 			isFocused := focusPkg != nil &&
 				node.Func.Pkg.Pkg.Path() == focusPkg.Path()
-			attrs := make(dotAttrs)
+			attrs := make(map[string]string)
 
 			// node label
 			label := node.Func.RelString(node.Func.Pkg.Pkg)
@@ -280,21 +277,18 @@ func printOutput(
 				}
 				key := node.Func.Pkg.Pkg.Path()
 				if _, ok := c.Clusters[key]; !ok {
-					c.Clusters[key] = &dotCluster{
-						ID:       key,
-						Clusters: make(map[string]*dotCluster),
-						Attrs: dotAttrs{
-							"penwidth":  "0.8",
-							"fontsize":  "16",
-							"label":     label,
-							"style":     "filled",
-							"fillcolor": "lightyellow",
-							"URL":       fmt.Sprintf("/?f=%s", key),
-							"fontname":  "Tahoma bold",
-							"tooltip":   fmt.Sprintf("package: %s", key),
-							"rank":      "sink",
-						},
-					}
+					c.Clusters[key] = calldot.NewDotCluster(key)
+					c.Clusters[key].SetAttrs(map[string]string{
+						"penwidth":  "0.8",
+						"fontsize":  "16",
+						"label":     label,
+						"style":     "filled",
+						"fillcolor": "lightyellow",
+						"URL":       fmt.Sprintf("/?f=%s", key),
+						"fontname":  "Tahoma bold",
+						"tooltip":   fmt.Sprintf("package: %s", key),
+						"rank":      "sink",
+					})
 					if pkg.Goroot {
 						c.Clusters[key].Attrs["fillcolor"] = "#E0FFE1"
 					}
@@ -307,20 +301,17 @@ func printOutput(
 				label := strings.Split(node.Func.RelString(node.Func.Pkg.Pkg), ".")[0]
 				key := sign.Recv().Type().String()
 				if _, ok := c.Clusters[key]; !ok {
-					c.Clusters[key] = &dotCluster{
-						ID:       key,
-						Clusters: make(map[string]*dotCluster),
-						Attrs: dotAttrs{
-							"penwidth":  "0.5",
-							"fontsize":  "15",
-							"fontcolor": "#222222",
-							"label":     label,
-							"labelloc":  "b",
-							"style":     "rounded,filled",
-							"fillcolor": "wheat2",
-							"tooltip":   fmt.Sprintf("type: %s", key),
-						},
-					}
+					c.Clusters[key] = calldot.NewDotCluster(key)
+					c.Clusters[key].SetAttrs(map[string]string{
+						"penwidth":  "0.5",
+						"fontsize":  "15",
+						"fontcolor": "#222222",
+						"label":     label,
+						"labelloc":  "b",
+						"style":     "rounded,filled",
+						"fillcolor": "wheat2",
+						"tooltip":   fmt.Sprintf("type: %s", key),
+					})
 					if isFocused {
 						c.Clusters[key].Attrs["fillcolor"] = "lightsteelblue"
 					} else if pkg.Goroot {
@@ -332,7 +323,7 @@ func printOutput(
 
 			attrs["tooltip"] = nodeTooltip
 
-			n := &dotNode{
+			n := &calldot.DotNode{
 				ID:    node.Func.String(),
 				Attrs: attrs,
 			}
@@ -350,7 +341,7 @@ func printOutput(
 		calleeNode := sprintNode(edge.Callee, false)
 
 		// edges
-		attrs := make(dotAttrs)
+		attrs := make(map[string]string)
 
 		// dynamic call
 		if edge.Site != nil && edge.Site.Common().StaticCallee() == nil {
@@ -383,7 +374,7 @@ func printOutput(
 		key := fmt.Sprintf("%s = %s => %s", caller.Func, edge.Description(), callee.Func)
 		if _, ok := edgeMap[key]; !ok {
 			attrs["tooltip"] = fileEdge
-			e := &dotEdge{
+			e := &calldot.DotEdge{
 				From:  callerNode,
 				To:    calleeNode,
 				Attrs: attrs,
@@ -429,20 +420,7 @@ func printOutput(
 	if mainPkg != nil && mainPkg.Pkg != nil {
 		title = mainPkg.Pkg.Path()
 	}
-	dot := &dotGraph{
-		Title:   title,
-		Minlen:  minlen,
-		Cluster: cluster,
-		Nodes:   nodes,
-		Edges:   edges,
-		Options: map[string]string{
-			"minlen":    fmt.Sprint(minlen),
-			"nodesep":   fmt.Sprint(nodesep),
-			"nodeshape": fmt.Sprint(nodeshape),
-			"nodestyle": fmt.Sprint(nodestyle),
-			"rankdir":   fmt.Sprint(rankdir),
-		},
-	}
+	dot := calldot.NewDotGraph(title, cluster, nodes, edges)
 
 	var buf bytes.Buffer
 	if err := dot.WriteDot(&buf); err != nil {
