@@ -1,8 +1,11 @@
-package main
+package callvis
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
+	"go/build"
+	"golang.org/x/tools/go/buildutil"
 	"io"
 	"log"
 	"os"
@@ -19,6 +22,16 @@ var (
 	nodestyle string
 	rankdir   string
 )
+
+func init() {
+	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags", buildutil.TagsFlagDoc)
+	// Graphviz options
+	flag.UintVar(&minlen, "minlen", 2, "Minimum edge length (for wider output).")
+	flag.Float64Var(&nodesep, "nodesep", 0.35, "Minimum space between two adjacent nodes in the same rank (for taller output).")
+	flag.StringVar(&nodeshape, "nodeshape", "box", "graph node shape (see graphvis manpage for valid values)")
+	flag.StringVar(&nodestyle, "nodestyle", "filled,rounded", "graph node style (see graphvis manpage for valid values)")
+	flag.StringVar(&rankdir, "rankdir", "LR", "Direction of graph layout [LR | RL | TB | BT]")
+}
 
 const tmplCluster = `{{define "cluster" -}}
     {{printf "subgraph %q {" .}}
@@ -145,11 +158,7 @@ func (g *dotGraph) WriteDot(w io.Writer) error {
 	return err
 }
 
-func dotToImage(outfname string, format string, dot []byte) (string, error) {
-	if *graphvizFlag {
-		return runDotToImageCallSystemGraphviz(outfname, format, dot)
-	}
-
+func DotToImage(outfname string, format string, dot []byte) (string, error) {
 	return runDotToImage(outfname, format, dot)
 }
 

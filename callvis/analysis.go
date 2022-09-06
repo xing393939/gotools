@@ -1,4 +1,4 @@
-package main
+package callvis
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"golang.org/x/tools/go/callgraph/rta"
 	"golang.org/x/tools/go/callgraph/static"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -31,7 +32,7 @@ const (
 	CallGraphTypePointer               = "pointer"
 )
 
-//==[ type def/func: analysis   ]===============================================
+//==[ type def/func: Analysis   ]===============================================
 type renderOpts struct {
 	cacheDir string
 	focus    string
@@ -60,8 +61,8 @@ func mainPackages(pkgs []*ssa.Package) ([]*ssa.Package, error) {
 	return mains, nil
 }
 
-//==[ type def/func: analysis   ]===============================================
-type analysis struct {
+//==[ type def/func: Analysis   ]===============================================
+type Analysis struct {
 	opts      *renderOpts
 	prog      *ssa.Program
 	pkgs      []*ssa.Package
@@ -69,9 +70,7 @@ type analysis struct {
 	callgraph *callgraph.Graph
 }
 
-var Analysis *analysis
-
-func (a *analysis) DoAnalysis(
+func (a *Analysis) DoAnalysis(
 	algo CallGraphType,
 	dir string,
 	tests bool,
@@ -144,20 +143,22 @@ func (a *analysis) DoAnalysis(
 	return nil
 }
 
-func (a *analysis) OptsSetup() {
-	a.opts = &renderOpts{
-		cacheDir: *cacheDir,
-		focus:    *focusFlag,
-		group:    []string{*groupFlag},
-		ignore:   []string{*ignoreFlag},
-		include:  []string{*includeFlag},
-		limit:    []string{*limitFlag},
-		nointer:  *nointerFlag,
-		nostd:    *nostdFlag,
+func NewAnalysis(cacheDir, focusFlag, groupFlag, ignoreFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) *Analysis {
+	analysisObj := new(Analysis)
+	analysisObj.opts = &renderOpts{
+		cacheDir: cacheDir,
+		focus:    focusFlag,
+		group:    []string{groupFlag},
+		ignore:   []string{ignoreFlag},
+		include:  []string{includeFlag},
+		limit:    []string{limitFlag},
+		nointer:  nointerFlag,
+		nostd:    nostdFlag,
 	}
+	return analysisObj
 }
 
-func (a *analysis) ProcessListArgs() (e error) {
+func (a *Analysis) ProcessListArgs() (e error) {
 	var groupBy []string
 	var ignorePaths []string
 	var includePaths []string
@@ -204,7 +205,7 @@ func (a *analysis) ProcessListArgs() (e error) {
 	return
 }
 
-func (a *analysis) OverrideByHTTP(r *http.Request) {
+func (a *Analysis) OverrideByHTTP(r *http.Request) {
 	if f := r.FormValue("f"); f == "all" {
 		a.opts.focus = ""
 	} else if f != "" {
@@ -231,12 +232,11 @@ func (a *analysis) OverrideByHTTP(r *http.Request) {
 	if inc := r.FormValue("include"); inc != "" {
 		a.opts.include[0] = inc
 	}
-	return
 }
 
 // basically do printOutput() with previously checking
 // focus option and respective package
-func (a *analysis) Render() ([]byte, error) {
+func (a *Analysis) Render() ([]byte, error) {
 	var (
 		err      error
 		ssaPkg   *ssa.Package
@@ -291,7 +291,33 @@ func (a *analysis) Render() ([]byte, error) {
 	return dot, nil
 }
 
-func (a *analysis) FindCachedImg() string {
+func (a *Analysis) OutputDot(fname string, outputFormat string) (img string, err error) {
+	if img = a.FindCachedImg(outputFormat); img != "" {
+		return img, nil
+	}
+
+	if e := a.ProcessListArgs(); e != nil {
+		return "", e
+	}
+
+	output, err := a.Render()
+	if err != nil {
+		return "", err
+	}
+	log.Println("writing dot output..")
+
+	writeErr := ioutil.WriteFile(fmt.Sprintf("%s.gv", fname), output, 0755)
+	if writeErr != nil {
+		return "", writeErr
+	}
+	log.Printf("converting dot to %s..\n", outputFormat)
+
+	img, err = DotToImage(fname, outputFormat, output)
+	_ = a.CacheImg(img, outputFormat)
+	return
+}
+
+func (a *Analysis) FindCachedImg(outputFormat string) string {
 	if a.opts.cacheDir == "" || a.opts.refresh {
 		return ""
 	}
@@ -300,7 +326,7 @@ func (a *analysis) FindCachedImg() string {
 	if focus == "" {
 		focus = "all"
 	}
-	focusFilePath := focus + "." + *outputFormat
+	focusFilePath := focus + "." + outputFormat
 	absFilePath := filepath.Join(a.opts.cacheDir, focusFilePath)
 
 	if exists, err := pathExists(absFilePath); err != nil || !exists {
@@ -312,7 +338,7 @@ func (a *analysis) FindCachedImg() string {
 	return absFilePath
 }
 
-func (a *analysis) CacheImg(img string) error {
+func (a *Analysis) CacheImg(img, outputFormat string) error {
 	if a.opts.cacheDir == "" || img == "" {
 		return nil
 	}
@@ -330,7 +356,7 @@ func (a *analysis) CacheImg(img string) error {
 		return err
 	}
 
-	absFilePath := absCacheDirPrefix + "." + *outputFormat
+	absFilePath := absCacheDirPrefix + "." + outputFormat
 	_, err = copyFile(img, absFilePath)
 	if err != nil {
 		return err

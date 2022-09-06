@@ -1,4 +1,4 @@
-package main
+package callvis
 
 import (
 	"bytes"
@@ -450,4 +450,8 @@ func printOutput(
 	}
 
 	return buf.Bytes(), nil
+}
+
+func logf(f string, a ...interface{}) {
+	// log.Printf(f, a...)
 }
