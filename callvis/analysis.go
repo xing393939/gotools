@@ -39,6 +39,7 @@ type renderOpts struct {
 	focus    string
 	group    []string
 	ignore   []string
+	sweep    []string
 	include  []string
 	limit    []string
 	nointer  bool
@@ -144,12 +145,13 @@ func (a *Analysis) DoAnalysis(
 	return nil
 }
 
-func (a *Analysis) OptsSetup(cacheDir, focusFlag, groupFlag, ignoreFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) {
+func (a *Analysis) OptsSetup(cacheDir, focusFlag, groupFlag, ignoreFlag, sweepFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) {
 	a.opts = &renderOpts{
 		cacheDir: cacheDir,
 		focus:    focusFlag,
 		group:    []string{groupFlag},
 		ignore:   []string{ignoreFlag},
+		sweep:    []string{sweepFlag},
 		include:  []string{includeFlag},
 		limit:    []string{limitFlag},
 		nointer:  nointerFlag,
@@ -160,6 +162,7 @@ func (a *Analysis) OptsSetup(cacheDir, focusFlag, groupFlag, ignoreFlag, include
 func (a *Analysis) ProcessListArgs() (e error) {
 	var groupBy []string
 	var ignorePaths []string
+	var sweepPaths []string
 	var includePaths []string
 	var limitPaths []string
 
@@ -182,6 +185,13 @@ func (a *Analysis) ProcessListArgs() (e error) {
 		}
 	}
 
+	for _, p := range strings.Split(a.opts.sweep[0], ",") {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			sweepPaths = append(sweepPaths, p)
+		}
+	}
+
 	for _, p := range strings.Split(a.opts.include[0], ",") {
 		p = strings.TrimSpace(p)
 		if p != "" {
@@ -198,6 +208,7 @@ func (a *Analysis) ProcessListArgs() (e error) {
 
 	a.opts.group = groupBy
 	a.opts.ignore = ignorePaths
+	a.opts.sweep = sweepPaths
 	a.opts.include = includePaths
 	a.opts.limit = limitPaths
 
@@ -227,6 +238,9 @@ func (a *Analysis) OverrideByHTTP(r *http.Request) {
 	}
 	if ign := r.FormValue("ignore"); ign != "" {
 		a.opts.ignore[0] = ign
+	}
+	if sw := r.FormValue("sweep"); sw != "" {
+		a.opts.sweep[0] = sw
 	}
 	if inc := r.FormValue("include"); inc != "" {
 		a.opts.include[0] = inc
@@ -278,6 +292,7 @@ func (a *Analysis) Render() ([]byte, error) {
 		focusPkg,
 		a.opts.limit,
 		a.opts.ignore,
+		a.opts.sweep,
 		a.opts.include,
 		a.opts.group,
 		a.opts.nostd,

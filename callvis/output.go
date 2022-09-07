@@ -29,6 +29,7 @@ func printOutput(
 	focusPkg *types.Package,
 	limitPaths,
 	ignorePaths,
+	sweepPaths,
 	includePaths []string,
 	groupBy []string,
 	nostd,
@@ -400,20 +401,7 @@ func printOutput(
 	}
 
 	// get edges form edgeMap
-	for _, e := range edgeMap {
-		e.From.Attrs["tooltip"] = fmt.Sprintf(
-			"%s\n%s",
-			e.From.Attrs["tooltip"],
-			e.Attrs["tooltip"],
-		)
-		for _, p := range ignorePaths {
-			if strings.Contains(e.From.ID, p) || strings.Contains(e.To.ID, p) {
-				e.Attrs["style"] = "invis"
-			}
-		}
-		edges = append(edges, e)
-	}
-
+	edges = getEdgesFormEdgeMap(edgeMap, sweepPaths)
 	logf("%d/%d edges", len(edges), count)
 
 	title := ""
@@ -428,6 +416,40 @@ func printOutput(
 	}
 
 	return buf.Bytes(), nil
+}
+
+func getEdgesFormEdgeMap(edgeMap map[string]*calldot.DotEdge, sweepPaths []string) (edges []*calldot.DotEdge) {
+	matchedNodes := make(map[*calldot.DotNode]bool)
+	for _, e := range edgeMap {
+		e.From.Attrs["tooltip"] = fmt.Sprintf(
+			"%s\n%s",
+			e.From.Attrs["tooltip"],
+			e.Attrs["tooltip"],
+		)
+
+		if e.From != e.To {
+			e.From.Out = append(e.From.Out, e)
+		}
+		for _, p := range sweepPaths {
+			if strings.Contains(e.To.ID, p) {
+				e.Attrs["style"] = "invis"
+				matchedNodes[e.To] = true
+				break
+			}
+		}
+		edges = append(edges, e)
+	}
+	for n := range matchedNodes {
+		sweepOutEdges(n)
+	}
+	return edges
+}
+
+func sweepOutEdges(node *calldot.DotNode) {
+	for _, e := range node.Out {
+		e.Attrs["style"] = "invis"
+		sweepOutEdges(e.To)
+	}
 }
 
 func logf(f string, a ...interface{}) {

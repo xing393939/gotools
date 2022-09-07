@@ -19,6 +19,7 @@ var (
 	groupFlag     = flag.String("group", "pkg", "Grouping functions by packages and/or types [pkg, type] (separated by comma)")
 	limitFlag     = flag.String("limit", "", "Limit package paths to given prefixes (separated by comma)")
 	ignoreFlag    = flag.String("ignore", "", "Ignore package paths containing given prefixes (separated by comma)")
+	sweepFlag     = flag.String("sweep", "", "Sweep edges containing given prefixes (separated by comma)")
 	includeFlag   = flag.String("include", "", "Include package paths with given prefixes (separated by comma)")
 	nostdFlag     = flag.Bool("nostd", false, "Omit calls to/from packages in standard library.")
 	nointerFlag   = flag.Bool("nointer", false, "Omit calls to unexported functions.")
@@ -64,7 +65,7 @@ func main() {
 
 	args := flag.Args()
 	analysisObj := new(callvis.Analysis)
-	analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
+	analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *sweepFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
 	if err := analysisObj.DoAnalysis(callvis.CallGraphType(*callgraphAlgo), "", *testFlag, args); err != nil {
 		log.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
+		analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *sweepFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
 		analysisObj.OverrideByHTTP(r)
 		img, err := analysisObj.OutputDot("output", *outputFormat)
 		if err != nil {
