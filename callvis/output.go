@@ -101,7 +101,7 @@ func printOutput(
 	var inIncludes = func(node *callgraph.Node) bool {
 		pkgPath := node.Func.Pkg.Pkg.Path()
 		for _, p := range includePaths {
-			if strings.HasPrefix(pkgPath, p) {
+			if pkgPath == p {
 				return true
 			}
 		}

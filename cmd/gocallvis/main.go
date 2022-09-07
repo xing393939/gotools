@@ -20,7 +20,7 @@ var (
 	limitFlag     = flag.String("limit", "", "Limit package paths to given prefixes (separated by comma)")
 	ignoreFlag    = flag.String("ignore", "", "Ignore package paths containing given prefixes (separated by comma)")
 	fanoutFlag    = flag.String("fanout", "", "Fanout nodes equals given strings (separated by comma)")
-	includeFlag   = flag.String("include", "", "Include package paths with given prefixes (separated by comma)")
+	includeFlag   = flag.String("include", "", "Include packages equals given strings (separated by comma)")
 	nostdFlag     = flag.Bool("nostd", false, "Omit calls to/from packages in standard library.")
 	nointerFlag   = flag.Bool("nointer", false, "Omit calls to unexported functions.")
 	testFlag      = flag.Bool("tests", false, "Include test code.")
