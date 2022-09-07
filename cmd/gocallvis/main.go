@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/xing393939/gotools/callvis"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -73,22 +74,13 @@ func main() {
 	httpAddr := *httpFlag
 	urlAddr := parseHTTPAddr(httpAddr)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && !strings.HasSuffix(r.URL.Path, ".svg") {
-			http.NotFound(w, r)
-			return
-		}
-		analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *fanoutFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
-		analysisObj.OverrideByHTTP(r)
-		img, err := analysisObj.OutputDot("output", *outputFormat)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Println("serving file:", img)
-		http.ServeFile(w, r, img)
+		svg, _ := ioutil.ReadFile("output.svg")
+		str := strings.Replace(string(svg), `width="`, `width="100%" w="`, 1)
+		w.Write([]byte(callvis.TemplateHead + str + callvis.TemplateFoot))
 	})
 
 	if *outputFile == "" {
+		analysisObj.OutputDot("output", *outputFormat)
 		log.Printf("http serving at %s", urlAddr)
 		if err := http.ListenAndServe(httpAddr, nil); err != nil {
 			log.Fatal(err)
