@@ -5,7 +5,7 @@
 ### goplantuml
 
 ```
-go install github.com/xing393939/gotools/cmd/goplantuml
+go install github.com/xing393939/gotools/cmd/goplantuml@latest
 goplantuml path/to/dir > diagram_file_name.puml
 
 Usage of goplantuml:
@@ -48,7 +48,7 @@ Usage of goplantuml:
 ### gocallvis
 
 ```
-go install github.com/xing393939/gotools/cmd/gocallvis
+go install github.com/xing393939/gotools/cmd/gocallvis@latest
 gocallvis [flags] package
 
 Usage of gocallvis:
