@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"go/build"
-	"golang.org/x/tools/go/buildutil"
 	"io"
 	"log"
 	"os"
@@ -24,7 +22,6 @@ var (
 )
 
 func init() {
-	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags", buildutil.TagsFlagDoc)
 	// Graphviz options
 	flag.UintVar(&minlen, "minlen", 2, "Minimum edge length (for wider output).")
 	flag.Float64Var(&nodesep, "nodesep", 0.35, "Minimum space between two adjacent nodes in the same rank (for taller output).")

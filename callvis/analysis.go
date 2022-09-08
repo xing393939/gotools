@@ -2,10 +2,12 @@ package callvis
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/xing393939/gotools/calldot"
 	"go/build"
 	"go/types"
+	"golang.org/x/tools/go/buildutil"
 	"golang.org/x/tools/go/callgraph"
 	"golang.org/x/tools/go/callgraph/cha"
 	"golang.org/x/tools/go/callgraph/rta"
@@ -46,6 +48,10 @@ type renderOpts struct {
 	refresh  bool
 	nostd    bool
 	algo     CallGraphType
+}
+
+func init() {
+	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags", buildutil.TagsFlagDoc)
 }
 
 // mainPackages returns the main packages to analyze.
