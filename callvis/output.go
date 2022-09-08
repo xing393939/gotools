@@ -128,7 +128,6 @@ func printOutput(
 	}
 
 	var isInter = func(edge *callgraph.Edge) bool {
-		//caller := edge.Caller
 		callee := edge.Callee
 		if callee.Func.Object() != nil && !callee.Func.Object().Exported() {
 			return true
@@ -146,7 +145,6 @@ func printOutput(
 		posCaller := prog.Fset.Position(caller.Func.Pos())
 		posCallee := prog.Fset.Position(callee.Func.Pos())
 		posEdge := prog.Fset.Position(edge.Pos())
-		//fileCaller := fmt.Sprintf("%s:%d", posCaller.Filename, posCaller.Line)
 		filenameCaller := filepath.Base(posCaller.Filename)
 
 		// omit synthetic calls
