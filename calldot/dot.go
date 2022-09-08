@@ -101,7 +101,6 @@ func (c *dotCluster) String() string {
 type DotNode struct {
 	ID    string
 	Attrs dotAttrs
-	Out   []*DotEdge
 }
 
 func (n *DotNode) String() string {

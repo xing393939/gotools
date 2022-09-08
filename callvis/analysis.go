@@ -1,7 +1,6 @@
 package callvis
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/xing393939/gotools/calldot"
@@ -15,9 +14,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -37,17 +34,15 @@ const (
 
 //==[ type def/func: Analysis   ]===============================================
 type renderOpts struct {
-	cacheDir string
-	focus    string
-	group    []string
-	ignore   []string
-	fanout   []string
-	include  []string
-	limit    []string
-	nointer  bool
-	refresh  bool
-	nostd    bool
-	algo     CallGraphType
+	focus   string
+	group   []string
+	ignore  []string
+	include []string
+	limit   []string
+	nointer bool
+	refresh bool
+	nostd   bool
+	algo    CallGraphType
 }
 
 func init() {
@@ -142,8 +137,6 @@ func (a *Analysis) DoAnalysis(
 		return fmt.Errorf("invalid call graph type: %s", a.opts.algo)
 	}
 
-	//cg.DeleteSyntheticNodes()
-
 	a.prog = prog
 	a.pkgs = pkgs
 	a.mainPkg = mainPkg
@@ -151,106 +144,27 @@ func (a *Analysis) DoAnalysis(
 	return nil
 }
 
-func (a *Analysis) OptsSetup(cacheDir, focusFlag, groupFlag, ignoreFlag, fanoutFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) {
+func (a *Analysis) OptsSetup(focusFlag, groupFlag, ignoreFlag, includeFlag, limitFlag string, nointerFlag, nostdFlag bool) {
 	a.opts = &renderOpts{
-		cacheDir: cacheDir,
-		focus:    focusFlag,
-		group:    []string{groupFlag},
-		ignore:   []string{ignoreFlag},
-		fanout:   []string{fanoutFlag},
-		include:  []string{includeFlag},
-		limit:    []string{limitFlag},
-		nointer:  nointerFlag,
-		nostd:    nostdFlag,
+		focus:   focusFlag,
+		group:   a.processListArgs(groupFlag),
+		ignore:  a.processListArgs(ignoreFlag),
+		include: a.processListArgs(includeFlag),
+		limit:   a.processListArgs(limitFlag),
+		nointer: nointerFlag,
+		nostd:   nostdFlag,
 	}
 }
 
-func (a *Analysis) ProcessListArgs() (e error) {
-	var groupBy []string
-	var ignorePaths []string
-	var fanoutPaths []string
-	var includePaths []string
-	var limitPaths []string
-
-	for _, g := range strings.Split(a.opts.group[0], ",") {
-		g := strings.TrimSpace(g)
-		if g == "" {
-			continue
-		}
-		if g != "pkg" && g != "type" {
-			e = errors.New("invalid group option")
-			return
-		}
-		groupBy = append(groupBy, g)
-	}
-
-	for _, p := range strings.Split(a.opts.ignore[0], ",") {
+func (a *Analysis) processListArgs(str string) []string {
+	var paths []string
+	for _, p := range strings.Split(str, ",") {
 		p = strings.TrimSpace(p)
 		if p != "" {
-			ignorePaths = append(ignorePaths, p)
+			paths = append(paths, p)
 		}
 	}
-
-	for _, p := range strings.Split(a.opts.fanout[0], ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			fanoutPaths = append(fanoutPaths, p)
-		}
-	}
-
-	for _, p := range strings.Split(a.opts.include[0], ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			includePaths = append(includePaths, p)
-		}
-	}
-
-	for _, p := range strings.Split(a.opts.limit[0], ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			limitPaths = append(limitPaths, p)
-		}
-	}
-
-	a.opts.group = groupBy
-	a.opts.ignore = ignorePaths
-	a.opts.fanout = fanoutPaths
-	a.opts.include = includePaths
-	a.opts.limit = limitPaths
-
-	return
-}
-
-func (a *Analysis) OverrideByHTTP(r *http.Request) {
-	if f := r.FormValue("f"); f == "all" {
-		a.opts.focus = ""
-	} else if f != "" {
-		a.opts.focus = f
-	}
-	if std := r.FormValue("std"); std != "" {
-		a.opts.nostd = false
-	}
-	if inter := r.FormValue("nointer"); inter != "" {
-		a.opts.nointer = true
-	}
-	if refresh := r.FormValue("refresh"); refresh != "" {
-		a.opts.refresh = true
-	}
-	if g := r.FormValue("group"); g != "" {
-		a.opts.group[0] = g
-	}
-	if l := r.FormValue("limit"); l != "" {
-		a.opts.limit[0] = l
-	}
-	if ign := r.FormValue("ignore"); ign != "" {
-		a.opts.ignore[0] = ign
-	}
-	if sw := r.FormValue("fanout"); sw != "" {
-		a.opts.fanout[0] = sw
-	}
-	if inc := r.FormValue("include"); inc != "" {
-		a.opts.include[0] = inc
-	}
+	return paths
 }
 
 // basically do printOutput() with previously checking
@@ -298,7 +212,6 @@ func (a *Analysis) Render() ([]byte, error) {
 		focusPkg,
 		a.opts.limit,
 		a.opts.ignore,
-		a.opts.fanout,
 		a.opts.include,
 		a.opts.group,
 		a.opts.nostd,
@@ -312,14 +225,6 @@ func (a *Analysis) Render() ([]byte, error) {
 }
 
 func (a *Analysis) OutputDot(fname string, outputFormat string) (img string, err error) {
-	if img = a.FindCachedImg(outputFormat); img != "" {
-		return img, nil
-	}
-
-	if e := a.ProcessListArgs(); e != nil {
-		return "", e
-	}
-
 	output, err := a.Render()
 	if err != nil {
 		return "", err
@@ -333,67 +238,7 @@ func (a *Analysis) OutputDot(fname string, outputFormat string) (img string, err
 	log.Printf("converting dot to %s..\n", outputFormat)
 
 	img, err = calldot.DotToImage(fname, outputFormat, output)
-	_ = a.CacheImg(img, outputFormat)
 	return
-}
-
-func (a *Analysis) FindCachedImg(outputFormat string) string {
-	if a.opts.cacheDir == "" || a.opts.refresh {
-		return ""
-	}
-
-	focus := a.opts.focus
-	if focus == "" {
-		focus = "all"
-	}
-	focusFilePath := focus + "." + outputFormat
-	absFilePath := filepath.Join(a.opts.cacheDir, focusFilePath)
-
-	if exists, err := pathExists(absFilePath); err != nil || !exists {
-		log.Println("not cached img:", absFilePath)
-		return ""
-	}
-
-	log.Println("hit cached img")
-	return absFilePath
-}
-
-func (a *Analysis) CacheImg(img, outputFormat string) error {
-	if a.opts.cacheDir == "" || img == "" {
-		return nil
-	}
-
-	focus := a.opts.focus
-	if focus == "" {
-		focus = "all"
-	}
-	absCacheDirPrefix := filepath.Join(a.opts.cacheDir, focus)
-	absCacheDirPath := strings.TrimRightFunc(absCacheDirPrefix, func(r rune) bool {
-		return r != '\\' && r != '/'
-	})
-	err := os.MkdirAll(absCacheDirPath, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	absFilePath := absCacheDirPrefix + "." + outputFormat
-	_, err = copyFile(img, absFilePath)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
 
 func copyFile(src, dst string) (int64, error) {

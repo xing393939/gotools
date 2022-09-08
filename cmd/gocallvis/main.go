@@ -19,7 +19,6 @@ var (
 	groupFlag     = flag.String("group", "pkg", "Grouping functions by packages and/or types [pkg, type] (separated by comma)")
 	limitFlag     = flag.String("limit", "", "Limit package paths to given prefixes (separated by comma)")
 	ignoreFlag    = flag.String("ignore", "", "Ignore package paths containing given prefixes (separated by comma)")
-	fanoutFlag    = flag.String("fanout", "", "Fanout nodes equals given strings (separated by comma)")
 	includeFlag   = flag.String("include", "", "Include packages equals given strings (separated by comma)")
 	nostdFlag     = flag.Bool("nostd", false, "Omit calls to/from packages in standard library.")
 	nointerFlag   = flag.Bool("nointer", false, "Omit calls to unexported functions.")
@@ -27,7 +26,6 @@ var (
 	httpFlag      = flag.String("http", ":7878", "HTTP service address.")
 	outputFile    = flag.String("file", "", "output filename - omit to use server mode")
 	outputFormat  = flag.String("format", "svg", "output file format [svg | png | jpg | ...]")
-	cacheDir      = flag.String("cacheDir", "", "Enable caching to avoid unnecessary re-rendering, you can force rendering by adding 'refresh=true' to the URL query or emptying the cache directory")
 	callgraphAlgo = flag.String("algo", callvis.CallGraphTypePointer, fmt.Sprintf("The algorithm used to construct the call graph. Possible values inlcude: %q, %q, %q, %q",
 		callvis.CallGraphTypeStatic, callvis.CallGraphTypeCha, callvis.CallGraphTypeRta, callvis.CallGraphTypePointer))
 	versionFlag = flag.Bool("version", false, "Show version and exit.")
@@ -65,7 +63,7 @@ func main() {
 
 	args := flag.Args()
 	analysisObj := new(callvis.Analysis)
-	analysisObj.OptsSetup(*cacheDir, *focusFlag, *groupFlag, *ignoreFlag, *fanoutFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
+	analysisObj.OptsSetup(*focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
 	if err := analysisObj.DoAnalysis(callvis.CallGraphType(*callgraphAlgo), "", *testFlag, args); err != nil {
 		log.Fatal(err)
 	}

@@ -29,7 +29,6 @@ func printOutput(
 	focusPkg *types.Package,
 	limitPaths,
 	ignorePaths,
-	fanoutPaths,
 	includePaths []string,
 	groupBy []string,
 	nostd,
@@ -400,7 +399,14 @@ func printOutput(
 	}
 
 	// get edges form edgeMap
-	edges = getEdgesFormEdgeMap(edgeMap, fanoutPaths)
+	for _, e := range edgeMap {
+		e.From.Attrs["tooltip"] = fmt.Sprintf(
+			"%s\n%s",
+			e.From.Attrs["tooltip"],
+			e.Attrs["tooltip"],
+		)
+		edges = append(edges, e)
+	}
 	logf("%d/%d edges", len(edges), count)
 
 	title := ""
@@ -415,45 +421,6 @@ func printOutput(
 	}
 
 	return buf.Bytes(), nil
-}
-
-func getEdgesFormEdgeMap(edgeMap map[string]*calldot.DotEdge, fanoutPaths []string) (edges []*calldot.DotEdge) {
-	matchedNodes := make(map[*calldot.DotNode]bool)
-	for _, e := range edgeMap {
-		e.From.Attrs["tooltip"] = fmt.Sprintf(
-			"%s\n%s",
-			e.From.Attrs["tooltip"],
-			e.Attrs["tooltip"],
-		)
-
-		if e.From != e.To {
-			e.From.Out = append(e.From.Out, e)
-		}
-		if len(fanoutPaths) > 0 {
-			e.Attrs["style"] = "invis"
-			for _, p := range fanoutPaths {
-				if e.To.ID == p {
-					matchedNodes[e.To] = true
-					break
-				} else if e.From.ID == p {
-					matchedNodes[e.From] = true
-					break
-				}
-			}
-		}
-		edges = append(edges, e)
-	}
-	for n := range matchedNodes {
-		fanoutOutEdges(n)
-	}
-	return edges
-}
-
-func fanoutOutEdges(node *calldot.DotNode) {
-	for _, e := range node.Out {
-		delete(e.Attrs, "style")
-		fanoutOutEdges(e.To)
-	}
 }
 
 func logf(f string, a ...interface{}) {
