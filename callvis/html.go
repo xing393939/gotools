@@ -6,25 +6,38 @@ var TemplateHead = `<!DOCTYPE html>
     <meta charset="UTF-8"/>
     <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.5.0/dist/svg-pan-zoom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+    <style>
+        html, body, table {
+            height: 100%;
+            margin: 0;
+            width: 100%;
+            overflow: hidden;
+        }
+    </style>
 </head>
 <body>
-<p>
-    <button id="ShowAllEdges">显示全部</button>
-    <button id="HideAllEdges">隐藏全部</button>
-    |
-    <span>
-        <button id="button1">隐藏上游</button>
-        <button id="button3">恢复上游</button>
-        <button id="button2">隐藏下游</button>
-        <button id="button4">恢复下游</button>
-        <em id="nodeName"></em>
-    </span>
-</p>
-<div id="container" style="border:1px solid black;">
+<table>
+    <tr>
+        <td>
+            <button id="ShowAllEdges">显示全部</button>
+            <button id="HideAllEdges">隐藏全部</button>
+            <span>
+                <button id="button1">隐藏上游</button>
+                <button id="button3">恢复上游</button>
+                <button id="button2">隐藏下游</button>
+                <button id="button4">恢复下游</button>
+                <em id="nodeName"></em>
+            </span>
+        </td>
+    </tr>
+    <tr>
+        <td style="border-top: 1px solid #333;">
 `
 
 var TemplateFoot = `
-</div>
+        </td>
+    </tr>
+</table>
 
 <script>
     // Don't use window.onLoad like this in production, because it can only listen to one function.

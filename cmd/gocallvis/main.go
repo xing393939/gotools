@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 )
 
 const Usage = "gocallvis [flags] package: visualize call graph of a Go program.\n\n"
@@ -75,7 +74,7 @@ func main() {
 	urlAddr := parseHTTPAddr(httpAddr)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		svg, _ := ioutil.ReadFile("output.svg")
-		str := strings.Replace(string(svg), `width="`, `width="100%" w="`, 1)
+		str := string(svg)
 		w.Write([]byte(callvis.TemplateHead + str + callvis.TemplateFoot))
 	})
 
