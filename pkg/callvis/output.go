@@ -3,7 +3,7 @@ package callvis
 import (
 	"bytes"
 	"fmt"
-	"github.com/xing393939/gotools/calldot"
+	"github.com/xing393939/gotools/pkg/calldot"
 	"go/build"
 	"go/types"
 	"path/filepath"

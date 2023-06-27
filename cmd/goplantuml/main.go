@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	goplantuml "github.com/xing393939/gotools/parser"
+	goplantuml "github.com/xing393939/gotools/pkg/parser"
 	"io"
 	"os"
 	"path/filepath"

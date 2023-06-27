@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/xing393939/gotools/callvis"
+	callvis2 "github.com/xing393939/gotools/pkg/callvis"
 	"io/ioutil"
 	"log"
 	"net"
@@ -26,8 +26,8 @@ var (
 	httpFlag      = flag.String("http", ":7878", "HTTP service address.")
 	outputFile    = flag.String("file", "", "output filename - omit to use server mode")
 	outputFormat  = flag.String("format", "svg", "output file format [svg | png | jpg | ...]")
-	callgraphAlgo = flag.String("algo", callvis.CallGraphTypePointer, fmt.Sprintf("The algorithm used to construct the call graph. Possible values inlcude: %q, %q, %q, %q",
-		callvis.CallGraphTypeStatic, callvis.CallGraphTypeCha, callvis.CallGraphTypeRta, callvis.CallGraphTypePointer))
+	callgraphAlgo = flag.String("algo", callvis2.CallGraphTypePointer, fmt.Sprintf("The algorithm used to construct the call graph. Possible values inlcude: %q, %q, %q, %q",
+		callvis2.CallGraphTypeStatic, callvis2.CallGraphTypeCha, callvis2.CallGraphTypeRta, callvis2.CallGraphTypePointer))
 	versionFlag = flag.Bool("version", false, "Show version and exit.")
 )
 
@@ -51,7 +51,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Fprintln(os.Stderr, callvis.Version())
+		fmt.Fprintln(os.Stderr, callvis2.Version())
 		os.Exit(0)
 	}
 
@@ -62,9 +62,9 @@ func main() {
 	}
 
 	args := flag.Args()
-	analysisObj := new(callvis.Analysis)
+	analysisObj := new(callvis2.Analysis)
 	analysisObj.OptsSetup(*focusFlag, *groupFlag, *ignoreFlag, *includeFlag, *limitFlag, *nointerFlag, *nostdFlag)
-	if err := analysisObj.DoAnalysis(callvis.CallGraphType(*callgraphAlgo), "", *testFlag, args); err != nil {
+	if err := analysisObj.DoAnalysis(callvis2.CallGraphType(*callgraphAlgo), "", *testFlag, args); err != nil {
 		log.Fatal(err)
 	}
 
@@ -73,7 +73,7 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		svg, _ := ioutil.ReadFile("output.svg")
 		str := string(svg)
-		w.Write([]byte(callvis.TemplateHead + str + callvis.TemplateFoot))
+		w.Write([]byte(callvis2.TemplateHead + str + callvis2.TemplateFoot))
 	})
 
 	if *outputFile == "" {

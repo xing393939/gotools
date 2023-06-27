@@ -3,7 +3,7 @@ package callvis
 import (
 	"flag"
 	"fmt"
-	"github.com/xing393939/gotools/calldot"
+	"github.com/xing393939/gotools/pkg/calldot"
 	"go/build"
 	"go/types"
 	"golang.org/x/tools/go/buildutil"
