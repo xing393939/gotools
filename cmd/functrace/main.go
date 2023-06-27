@@ -20,6 +20,9 @@ func main() {
 		}
 		if filepath.Ext(path) == ".go" {
 			newSrc, _ := generator.Rewrite(path)
+			if len(newSrc) == 0 {
+				return nil
+			}
 			if err = ioutil.WriteFile(path, newSrc, 0666); err != nil {
 				panic(err)
 			}
