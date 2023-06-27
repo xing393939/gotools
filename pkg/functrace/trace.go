@@ -6,11 +6,12 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var (
 	// 因为map的key是协程id，是可以保证不会存在竞争的
-	indentMap = make(map[uint64]int)
+	indentMap = sync.Map{}
 	prevTyp   = uint64(0)
 	printLock = sync.Mutex{}
 )
@@ -25,6 +26,7 @@ func getGID() uint64 {
 }
 
 func printTrace(id, typ uint64, name string, indent int) {
+	millTime := time.Now().Format("150405.000")
 	printLock.Lock()
 	indents := ""
 	for i := 0; i < indent; i++ {
@@ -40,11 +42,11 @@ func printTrace(id, typ uint64, name string, indent int) {
 		fmt.Printf(" {\n")
 	}
 	if typ == 1 {
-		fmt.Printf("%8d %s%s()", id, indents, name)
+		fmt.Printf("%s%8d %s%s()", millTime, id, indents, name)
 	} else if typ == 0 && prevTyp == currTyp+1 {
 		fmt.Printf("\n")
 	} else {
-		fmt.Printf("%8d %s}\n", id, indents)
+		fmt.Printf("%s%8d %s}\n", millTime, id, indents)
 	}
 	prevTyp = currTyp
 	printLock.Unlock()
@@ -60,12 +62,14 @@ func Trace() func() {
 	fn := runtime.FuncForPC(pc)
 	name := fn.Name()
 
-	indent := indentMap[id]
-	indentMap[id] = indent + 1
-	printTrace(id, 1, name, indent+1)
+	indentObj, _ := indentMap.LoadOrStore(id, 0)
+	indentVal := indentObj.(int)
+	indentMap.Store(id, indentVal+1)
+	printTrace(id, 1, name, indentVal+1)
 	return func() {
-		indent = indentMap[id]
-		indentMap[id] = indent - 1
-		printTrace(id, 0, name, indent)
+		indentObj, _ = indentMap.LoadOrStore(id, 0)
+		indentVal = indentObj.(int)
+		indentMap.Store(id, indentVal-1)
+		printTrace(id, 0, name, indentVal)
 	}
 }
