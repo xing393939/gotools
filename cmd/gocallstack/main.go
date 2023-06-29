@@ -28,13 +28,13 @@ func getSymbol(symbols []elf.Symbol, ptr uint64) string {
 	return "unknow"
 }
 
-func setPC(pid int, pc uintptr) {
+func setPC(pid int, pc uint64) {
 	var regs syscall.PtraceRegs
 	err := syscall.PtraceGetRegs(pid, &regs)
 	if err != nil {
 		log.Fatal(err)
 	}
-	regs.SetPC(uint64(pc))
+	regs.SetPC(pc)
 	err = syscall.PtraceSetRegs(pid, &regs)
 	if err != nil {
 		log.Fatal(err)
@@ -44,45 +44,48 @@ func setPC(pid int, pc uintptr) {
 func cont(pid int) {
 	err := syscall.PtraceCont(pid, 0)
 	if err != nil {
-		log.Fatal("cont ", err)
+		log.Fatal("cont ", err, pid)
 	}
 }
 
-func setBreakpoint(pid int, breakpoint uintptr) byte {
+func setBreakpoint(pid int, breakpoint uint64) byte {
 	original := make([]byte, 1)
-	_, err := syscall.PtracePeekData(pid, breakpoint, original)
+	_, err := syscall.PtracePeekData(pid, uintptr(breakpoint), original)
 	if err != nil {
 		log.Fatal("setBreakpoint ", err)
 	}
-	_, err = syscall.PtracePokeData(pid, breakpoint, []byte{0xCC})
+	_, err = syscall.PtracePokeData(pid, uintptr(breakpoint), []byte{0xCC})
 	if err != nil {
 		log.Fatal("setBreakpoint ", err)
 	}
 	return original[0]
 }
 
-func clearBreakpoint(pid int, breakpoint uintptr, ori byte) {
+func clearBreakpoint(pid int, breakpoint uint64, ori byte) {
 	original := make([]byte, 1)
 	original[0] = ori
-	_, err := syscall.PtracePokeData(pid, breakpoint, original)
+	_, err := syscall.PtracePokeData(pid, uintptr(breakpoint), original)
 	if err != nil {
 		log.Fatal("clearBreakpoint ", err)
 	}
 }
 
-func getCurrentBk(pid int) uintptr {
+func getCurrentRegs(pid int) syscall.PtraceRegs {
 	var regs syscall.PtraceRegs
 	err := syscall.PtraceGetRegs(pid, &regs)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return uintptr(regs.Rip - 1)
+	return regs
 }
 
 func main() {
-	input := "../hello/hello"
-	cmd := exec.Command(input)
-	cmd.Args = []string{input}
+	if len(os.Args) != 2 {
+		println("usage: gocallstack /path/to/exe")
+		return
+	}
+	cmd := exec.Command(os.Args[1])
+	cmd.Args = os.Args[1:]
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Ptrace: true}
@@ -91,10 +94,11 @@ func main() {
 		log.Fatal(err)
 	}
 	err = cmd.Wait()
-	log.Printf("State: %v\n", err)
+	pid := cmd.Process.Pid
+	log.Printf("pid:%d %v\n", pid, err)
 
 	// 打开go二进制文件
-	file, err := elf.Open(input)
+	file, err := elf.Open(os.Args[1])
 	if err != nil {
 		log.Println("Error opening file")
 	}
@@ -107,8 +111,7 @@ func main() {
 	}
 
 	// 设置所有的断点
-	pid := cmd.Process.Pid
-	bkMap := make(map[uintptr]byte)
+	breakpointMap := make(map[uint64]byte)
 	for _, symbol := range symbols {
 		if symbol.Size == 0 {
 			continue
@@ -119,34 +122,32 @@ func main() {
 		if strings.Contains(symbol.Name, "internal/") {
 			continue
 		}
-		if strings.Contains(symbol.Name, "$f64.") {
-			continue
-		}
 		if strings.Contains(symbol.Name, "_cgo_") {
 			continue
 		}
-		if strings.Contains(symbol.Name, "_rt0_") {
+		if !strings.Contains(symbol.Name, "_rt0_") {
 			continue
 		}
-
-		breakpoint := uintptr(symbol.Value)
-		original := setBreakpoint(pid, breakpoint)
-		bkMap[breakpoint] = original
+		original := setBreakpoint(pid, symbol.Value)
+		breakpointMap[symbol.Value] = original
 	}
 
 	var ws syscall.WaitStatus
 	cont(pid)
-	_, err = syscall.Wait4(pid, &ws, syscall.WALL, nil)
-	for err == nil {
-		breakpoint := getCurrentBk(pid)
-		name := getSymbol(symbols, uint64(breakpoint))
-		log.Printf("%s %x\n", name, breakpoint)
+	waitPid, waitErr := syscall.Wait4(pid, &ws, syscall.WALL, nil)
+	for waitErr == nil {
+		if ws == 0x057f {
+			regs := getCurrentRegs(waitPid)
+			name := getSymbol(symbols, regs.Rip)
+			log.Printf("pid:%d %x %s %x\n", waitPid, ws, name, regs.Rip)
 
-		clearBreakpoint(pid, breakpoint, bkMap[breakpoint])
-		setPC(pid, breakpoint)
+			breakpoint := regs.Rip - 1
+			clearBreakpoint(waitPid, breakpoint, breakpointMap[breakpoint])
+			setPC(waitPid, breakpoint)
+		}
 
-		cont(pid)
-		_, err = syscall.Wait4(pid, &ws, syscall.WALL, nil)
+		cont(waitPid)
+		waitPid, waitErr = syscall.Wait4(pid, &ws, syscall.WALL, nil)
 	}
-	log.Println(err.Error())
+	log.Printf("%s %x \n", waitErr.Error(), ws)
 }
