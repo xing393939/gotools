@@ -29,6 +29,15 @@ func main() {
 			if fn.Name == "gosave_systemstack_switch" {
 				continue
 			}
+			if fn.Name == "internal/bytealg.IndexByteString" {
+				continue
+			}
+			if fn.Name == "indexbytebody" {
+				continue
+			}
+			if fn.Name == "aeshashbody" {
+				continue
+			}
 
 			_, err = target.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
 			if err != nil {
@@ -67,9 +76,8 @@ func main() {
 
 func getIndents(gid int64, gsp uint64) string {
 	gSlice, ok := gMap[gid]
-	if !ok || gsp > gSlice[0] {
+	if !ok {
 		gSlice = make([]uint64, 1)
-		gSlice[0] = gsp
 		gMap[gid] = gSlice
 	}
 
@@ -79,8 +87,10 @@ func getIndents(gid int64, gsp uint64) string {
 			indents = indents + " "
 		}
 	}
-	if len(indents) < len(gSlice) {
-		gSlice[len(indents)] = gsp
+	indentLen := len(indents)
+	if indentLen < len(gSlice) {
+		gSlice[indentLen] = gsp
+		gSlice = gSlice[:indentLen+1]
 	} else {
 		gSlice = append(gSlice, gsp)
 	}
