@@ -22,7 +22,7 @@ func main() {
 	}
 	targetList := targetGroup.Targets()
 	for _, target := range targetList {
-		for bid, fn := range target.Process.BinInfo().Functions {
+		for bid, fn := range target.BinInfo().Functions {
 			if fn.Entry == 0 || strings.HasPrefix(fn.Name, "runtime.") {
 				continue
 			}
