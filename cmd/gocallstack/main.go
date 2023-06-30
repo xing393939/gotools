@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var gMap = make(map[int64][]uint64)
+
 func main() {
 	if len(os.Args) != 2 {
 		println("usage: gocallstack /path/to/exe")
@@ -24,6 +26,9 @@ func main() {
 			if fn.Entry == 0 || strings.HasPrefix(fn.Name, "runtime.") {
 				continue
 			}
+			if fn.Name == "gosave_systemstack_switch" {
+				continue
+			}
 
 			_, err = target.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
 			if err != nil {
@@ -34,23 +39,51 @@ func main() {
 
 	err = targetGroup.Continue()
 	for err == nil {
-		for _, target := range targetList {
-			gid := int64(0)
-			tid := target.CurrentThread().ThreadID()
-			bp := target.CurrentThread().Breakpoint().Breakpoint
-			if bp == nil {
+		breakpoint := targetGroup.Selected.CurrentThread().Breakpoint().Breakpoint
+		if breakpoint == nil {
+			continue
+		}
+
+		for _, thread := range targetGroup.ThreadList() {
+			if thread.Breakpoint().Breakpoint == nil || !thread.Breakpoint().Active {
 				continue
 			}
-			if target.SelectedGoroutine() != nil {
-				gid = target.SelectedGoroutine().ID
+
+			goroutine, _ := proc.GetG(thread)
+			if goroutine == nil || goroutine.SystemStack {
+				continue
 			}
-			fmt.Printf("%8d %8d %s-%x\n", tid, gid, bp.FunctionName, bp.Addr)
+
+			breakpoint = thread.Breakpoint().Breakpoint
+			regs, _ := thread.Registers()
+			indents := getIndents(goroutine.ID, regs.SP())
+
+			fmt.Printf("%10d %s %s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
-		err = targetGroup.Next()
-		if err != nil && err.Error() == "next while nexting" {
-			// 线程正在nexting的时候被中断，如果继续Next()会报错，所以用Continue()
-			err = targetGroup.Continue()
-		}
+		err = targetGroup.Continue()
 	}
 	fmt.Println(err.Error())
+}
+
+func getIndents(gid int64, gsp uint64) string {
+	gSlice, ok := gMap[gid]
+	if !ok || gsp > gSlice[0] {
+		gSlice = make([]uint64, 1)
+		gSlice[0] = gsp
+		gMap[gid] = gSlice
+	}
+
+	indents := ""
+	for _, sp := range gSlice {
+		if gsp < sp {
+			indents = indents + " "
+		}
+	}
+	if len(indents) < len(gSlice) {
+		gSlice[len(indents)] = gsp
+	} else {
+		gSlice = append(gSlice, gsp)
+	}
+	gMap[gid] = gSlice
+	return indents
 }
