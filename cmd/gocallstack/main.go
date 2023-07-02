@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-var gMap = make(map[int64][]uint64)
+var gStack = make(map[int64][]int64)
+var gFiles = make(map[int64]*os.File)
 
 func main() {
 	if len(os.Args) != 2 {
@@ -63,37 +64,50 @@ func main() {
 				continue
 			}
 
-			breakpoint = thread.Breakpoint().Breakpoint
-			regs, _ := thread.Registers()
-			indents := getIndents(goroutine.ID, regs.SP())
+			stackFlames, _ := proc.ThreadStacktrace(thread, 1)
+			if len(stackFlames) == 0 {
+				continue
+			}
 
-			fmt.Printf("%10d %s %s\n", goroutine.ID, indents, breakpoint.FunctionName)
+			breakpoint = thread.Breakpoint().Breakpoint
+			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
+
+			printf(goroutine.ID, "%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
 	}
 	fmt.Println(err.Error())
 }
 
-func getIndents(gid int64, gsp uint64) string {
-	gSlice, ok := gMap[gid]
+func printf(gid int64, format string, args ...any) {
+	gFile, ok := gFiles[gid]
 	if !ok {
-		gSlice = make([]uint64, 1)
-		gMap[gid] = gSlice
+		gFile, _ = os.Create(fmt.Sprintf("gocallstack-%d.sql", gid))
+		gFiles[gid] = gFile
+	}
+	_, _ = fmt.Fprintf(gFile, format, args...)
+}
+
+func getIndents(gid int64, offset int64) string {
+	gSlice, ok := gStack[gid]
+	if !ok {
+		gSlice = make([]int64, 0)
+		gStack[gid] = gSlice
 	}
 
 	indents := ""
 	for _, sp := range gSlice {
-		if gsp < sp {
-			indents = indents + " "
+		if offset < sp {
+			indents = indents + "."
 		}
 	}
 	indentLen := len(indents)
 	if indentLen < len(gSlice) {
-		gSlice[indentLen] = gsp
+		gSlice[indentLen] = offset
 		gSlice = gSlice[:indentLen+1]
 	} else {
-		gSlice = append(gSlice, gsp)
+		gSlice = append(gSlice, offset)
 	}
-	gMap[gid] = gSlice
+	gStack[gid] = gSlice
 	return indents
 }
