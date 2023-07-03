@@ -79,10 +79,8 @@ func main() {
 			}
 
 			breakpoint = thread.Breakpoint().Breakpoint
-			if gPrev, ok := gAddr[goroutine.ID]; ok {
-				if gPrev == breakpoint.Addr {
-					continue
-				}
+			if gPrev, ok := gAddr[goroutine.ID]; ok && gPrev == breakpoint.Addr {
+				continue
 			}
 			gAddr[goroutine.ID] = breakpoint.Addr
 
