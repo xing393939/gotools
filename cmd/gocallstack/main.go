@@ -6,11 +6,11 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
 	"os"
-	"strings"
 )
 
 var gStack = make(map[int64][]int64)
 var gFiles = make(map[int64]*os.File)
+var gAddr = make(map[int64]uint64)
 
 func main() {
 	if len(os.Args) != 2 {
@@ -24,7 +24,7 @@ func main() {
 	targetList := targetGroup.Targets()
 	for _, target := range targetList {
 		for bid, fn := range target.BinInfo().Functions {
-			if fn.Entry == 0 || strings.HasPrefix(fn.Name, "runtime.") {
+			if fn.Entry == 0 {
 				continue
 			}
 			if fn.Name == "gosave_systemstack_switch" {
@@ -37,6 +37,15 @@ func main() {
 				continue
 			}
 			if fn.Name == "aeshashbody" {
+				continue
+			}
+			if fn.Name == "gogo" {
+				continue
+			}
+			if fn.PackageName() == "runtime" {
+				continue
+			}
+			if fn.PackageName() == "syscall" {
 				continue
 			}
 
@@ -70,8 +79,14 @@ func main() {
 			}
 
 			breakpoint = thread.Breakpoint().Breakpoint
-			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
+			if gPrev, ok := gAddr[goroutine.ID]; ok {
+				if gPrev == breakpoint.Addr {
+					continue
+				}
+			}
+			gAddr[goroutine.ID] = breakpoint.Addr
 
+			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
 			printf(goroutine.ID, "%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
