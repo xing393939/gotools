@@ -6,7 +6,9 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 )
 
 var gStack = make(map[int64][]int64)
@@ -18,14 +20,26 @@ func main() {
 		println("usage: gocallstack [exe|pid]")
 		return
 	}
+	killFlag := [2]bool{false, true}
 	targetGroup, err := native.Launch(os.Args[1:], "", 0, nil, "", [3]string{})
 	if err != nil {
 		pid, _ := strconv.Atoi(os.Args[1])
 		targetGroup, err = native.Attach(pid, nil)
 		if err != nil {
-			panic(err)
+			println("exe|pid not found")
+			return
 		}
+		killFlag[1] = false
 	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-quit
+		killFlag[0] = true
+		_ = syscall.Kill(targetGroup.Selected.Pid(), syscall.SIGSTOP)
+	}()
+
 	targetList := targetGroup.Targets()
 	for _, target := range targetList {
 		for bid, fn := range target.BinInfo().Functions {
@@ -66,6 +80,11 @@ func main() {
 
 	err = targetGroup.Continue()
 	for err == nil {
+		if killFlag[0] {
+			_ = targetGroup.Detach(killFlag[1])
+			os.Exit(0)
+		}
+
 		breakpoint := targetGroup.Selected.CurrentThread().Breakpoint().Breakpoint
 		if breakpoint == nil {
 			continue
