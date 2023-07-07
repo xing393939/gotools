@@ -30,15 +30,6 @@ func main() {
 			if fn.Name == "gosave_systemstack_switch" {
 				continue
 			}
-			if fn.Name == "internal/bytealg.IndexByteString" {
-				continue
-			}
-			if fn.Name == "indexbytebody" {
-				continue
-			}
-			if fn.Name == "aeshashbody" {
-				continue
-			}
 			if fn.Name == "gogo" {
 				continue
 			}
@@ -85,7 +76,7 @@ func main() {
 			gAddr[goroutine.ID] = breakpoint.Addr
 
 			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
-			printf(goroutine.ID, "%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
+			printf(1, "%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
 	}
