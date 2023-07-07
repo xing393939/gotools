@@ -93,7 +93,7 @@ func main() {
 			gAddr[goroutine.ID] = breakpoint.Addr
 
 			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
-			printf(1, "%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
+			fmt.Printf("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
 	}
