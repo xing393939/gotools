@@ -6,6 +6,7 @@ import (
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
 	"os"
+	"strconv"
 )
 
 var gStack = make(map[int64][]int64)
@@ -13,13 +14,17 @@ var gFiles = make(map[int64]*os.File)
 var gAddr = make(map[int64]uint64)
 
 func main() {
-	if len(os.Args) != 2 {
-		println("usage: gocallstack /path/to/exe")
+	if len(os.Args) < 2 {
+		println("usage: gocallstack [exe|pid]")
 		return
 	}
-	targetGroup, err := native.Launch(os.Args[1:], "", 0, []string{}, "", [3]string{})
+	targetGroup, err := native.Launch(os.Args[1:], "", 0, nil, "", [3]string{})
 	if err != nil {
-		panic(err)
+		pid, _ := strconv.Atoi(os.Args[1])
+		targetGroup, err = native.Attach(pid, nil)
+		if err != nil {
+			panic(err)
+		}
 	}
 	targetList := targetGroup.Targets()
 	for _, target := range targetList {
@@ -46,6 +51,17 @@ func main() {
 			}
 		}
 	}
+
+	/*bi := proc.NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
+	_ = bi.LoadBinaryInfo(os.Args[1], 0, []string{})
+	rdr := bi.Images[0].DwarfReader()
+	rdr.Seek(0)
+	for bid, fn := range bi.Functions {
+		if fn.Entry == 0 || fn.Entry == fn.End {
+			continue
+		}
+		_ = bid
+	}*/
 
 	err = targetGroup.Continue()
 	for err == nil {
