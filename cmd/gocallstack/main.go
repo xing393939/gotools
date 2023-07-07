@@ -32,16 +32,17 @@ func main() {
 			if fn.Entry == 0 {
 				continue
 			}
-			if fn.Name == "gosave_systemstack_switch" {
+			switch fn.Name {
+			case "gosave_systemstack_switch", "gogo":
+				continue
+			case "aeshashbody", "indexbytebody", "countbody", "cmpbody", "indexbody", "memeqbody":
 				continue
 			}
-			if fn.Name == "gogo" {
+
+			switch fn.PackageName() {
+			case "encoding/json", "compress/flate", "internal/bytealg":
 				continue
-			}
-			if fn.PackageName() == "runtime" {
-				continue
-			}
-			if fn.PackageName() == "syscall" {
+			case "reflect", "strings", "runtime", "syscall":
 				continue
 			}
 
