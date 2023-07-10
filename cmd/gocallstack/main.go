@@ -111,7 +111,7 @@ func main() {
 			}
 			gAddr[goroutine.ID] = breakpoint.Addr
 
-			indents := getIndents(goroutine.ID, stackFlames[0].FramePointerOffset())
+			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
 			fmt.Printf("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
@@ -128,11 +128,13 @@ func printf(gid int64, format string, args ...any) {
 	_, _ = fmt.Fprintf(gFile, format, args...)
 }
 
-func getIndents(gid int64, offset int64) string {
-	gSlice, ok := gStack[gid]
+func getIndents(g *proc.G, offset int64) string {
+	gSlice, ok := gStack[g.ID]
 	if !ok {
-		gSlice = make([]int64, 0)
-		gStack[gid] = gSlice
+		gSlice = make([]int64, 1)
+		gSlice[0] = 1
+		fmt.Printf("%10d goroutine-%d created by %s\n", g.ID, g.ID, g.Go().Fn.Name)
+		gStack[g.ID] = gSlice
 	}
 
 	indents := ""
@@ -148,6 +150,6 @@ func getIndents(gid int64, offset int64) string {
 	} else {
 		gSlice = append(gSlice, offset)
 	}
-	gStack[gid] = gSlice
+	gStack[g.ID] = gSlice
 	return indents
 }
