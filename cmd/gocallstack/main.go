@@ -12,12 +12,11 @@ import (
 )
 
 var gStack = make(map[int64][]int64)
-var gFiles = make(map[int64]*os.File)
 var gAddr = make(map[int64]uint64)
 
 func main() {
 	if len(os.Args) < 2 {
-		println("usage: gocallstack [exe|pid]")
+		logPrint("usage: gocallstack [exe|pid]\n")
 		return
 	}
 	killFlag := [2]bool{false, true}
@@ -26,7 +25,7 @@ func main() {
 		pid, _ := strconv.Atoi(os.Args[1])
 		targetGroup, err = native.Attach(pid, nil)
 		if err != nil {
-			println("exe|pid not found")
+			logPrint("exe|pid not found\n")
 			return
 		}
 		killFlag[1] = false
@@ -60,7 +59,7 @@ func main() {
 
 		_, err = targetGroup.Selected.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
 		if err != nil {
-			fmt.Println(fn.Name, err.Error())
+			logPrint("%s %s\n", fn.Name, err.Error())
 		}
 	}
 
@@ -98,20 +97,15 @@ func main() {
 			gAddr[goroutine.ID] = breakpoint.Addr
 
 			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
-			fmt.Printf("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
+			logPrint("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
 	}
-	fmt.Println(err.Error())
+	logPrint("%s\n", err.Error())
 }
 
-func printf(gid int64, format string, args ...any) {
-	gFile, ok := gFiles[gid]
-	if !ok {
-		gFile, _ = os.Create(fmt.Sprintf("gocallstack-%d.sql", gid))
-		gFiles[gid] = gFile
-	}
-	_, _ = fmt.Fprintf(gFile, format, args...)
+func logPrint(format string, args ...any) {
+	fmt.Printf(format, args...)
 }
 
 func getIndents(g *proc.G, offset int64) string {
@@ -119,7 +113,7 @@ func getIndents(g *proc.G, offset int64) string {
 	if !ok {
 		gSlice = make([]int64, 1)
 		gSlice[0] = 1
-		fmt.Printf("%10d goroutine-%d created by %s\n", g.ID, g.ID, g.Go().Fn.Name)
+		logPrint("%10d goroutine-%d created by %s\n", g.ID, g.ID, g.Go().Fn.Name)
 		gStack[g.ID] = gSlice
 	}
 
