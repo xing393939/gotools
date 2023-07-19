@@ -40,43 +40,29 @@ func main() {
 		_ = syscall.Kill(targetGroup.Selected.Pid(), syscall.SIGSTOP)
 	}()
 
-	targetList := targetGroup.Targets()
-	for _, target := range targetList {
-		for bid, fn := range target.BinInfo().Functions {
-			if fn.Entry == 0 {
-				continue
-			}
-			switch fn.Name {
-			case "gosave_systemstack_switch", "gogo":
-				continue
-			case "aeshashbody", "indexbytebody", "countbody", "cmpbody", "indexbody", "memeqbody":
-				continue
-			}
-
-			switch fn.PackageName() {
-			case "encoding/json", "compress/flate", "internal/bytealg":
-				continue
-			case "reflect", "strings", "runtime", "syscall":
-				continue
-			}
-
-			_, err = target.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
-			if err != nil {
-				fmt.Println(fn.Name, err.Error())
-			}
-		}
-	}
-
-	/*bi := proc.NewBinaryInfo(runtime.GOOS, runtime.GOARCH)
-	_ = bi.LoadBinaryInfo(os.Args[1], 0, []string{})
-	rdr := bi.Images[0].DwarfReader()
-	rdr.Seek(0)
-	for bid, fn := range bi.Functions {
-		if fn.Entry == 0 || fn.Entry == fn.End {
+	for bid, fn := range targetGroup.Selected.BinInfo().Functions {
+		if fn.Entry == 0 {
 			continue
 		}
-		_ = bid
-	}*/
+		switch fn.Name {
+		case "gosave_systemstack_switch", "gogo":
+			continue
+		case "aeshashbody", "indexbytebody", "countbody", "cmpbody", "indexbody", "memeqbody":
+			continue
+		}
+
+		switch fn.PackageName() {
+		case "encoding/json", "compress/flate", "internal/bytealg":
+			continue
+		case "reflect", "strings", "runtime", "syscall":
+			continue
+		}
+
+		_, err = targetGroup.Selected.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
+		if err != nil {
+			fmt.Println(fn.Name, err.Error())
+		}
+	}
 
 	err = targetGroup.Continue()
 	for err == nil {
