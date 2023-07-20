@@ -96,7 +96,7 @@ func main() {
 			}
 			gAddr[goroutine.ID] = breakpoint.Addr
 
-			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
+			indents := getIndents(targetGroup.Selected, goroutine, stackFlames[0].FramePointerOffset())
 			logPrint("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
 		}
 		err = targetGroup.Continue()
@@ -108,12 +108,15 @@ func logPrint(format string, args ...any) {
 	fmt.Printf(format, args...)
 }
 
-func getIndents(g *proc.G, offset int64) string {
+func getIndents(t *proc.Target, g *proc.G, offset int64) string {
 	gSlice, ok := gStack[g.ID]
 	if !ok {
-		gSlice = make([]int64, 1)
+		gSlice = make([]int64, 2)
 		gSlice[0] = 1
+		gSlice[1] = 0
+		startFunc := g.StartLoc(t).Fn.Name
 		logPrint("%10d goroutine-%d created by %s\n", g.ID, g.ID, g.Go().Fn.Name)
+		logPrint("%10d .%s\n", g.ID, startFunc)
 		gStack[g.ID] = gSlice
 	}
 
