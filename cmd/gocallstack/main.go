@@ -100,7 +100,7 @@ func main() {
 
 			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
 			duration := time.Since(start).Seconds()
-			logPrint("%10d%12.6f %s%s %s#L%d\n", goroutine.ID, duration, indents, breakpoint.FunctionName, breakpoint.File, breakpoint.Line)
+			logPrint("%10d%12.6f %s%s at %s#L%d\n", goroutine.ID, duration, indents, breakpoint.FunctionName, breakpoint.File, breakpoint.Line)
 		}
 		err = targetGroup.Continue()
 	}
