@@ -9,10 +9,12 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
+var start = time.Now()
 
 func main() {
 	if len(os.Args) < 2 {
@@ -97,7 +99,8 @@ func main() {
 			gAddr[goroutine.ID] = breakpoint.Addr
 
 			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
-			logPrint("%10d %s%s\n", goroutine.ID, indents, breakpoint.FunctionName)
+			duration := time.Since(start).Seconds()
+			logPrint("%10d%12.6f %s%s %s#L%d\n", goroutine.ID, duration, indents, breakpoint.FunctionName, breakpoint.File, breakpoint.Line)
 		}
 		err = targetGroup.Continue()
 	}
@@ -118,7 +121,8 @@ func getIndents(g *proc.G, offset int64) string {
 		if g.ID != 1 {
 			return fmt.Sprintf("goroutine-%d created by ", g.ID)
 		}
-		logPrint("%10d goroutine-%d runtime.main\n", g.ID, g.ID)
+		duration := time.Since(start).Seconds()
+		logPrint("%10d%12.6f goroutine-%d runtime.main\n", g.ID, duration, g.ID)
 	}
 
 	indents := ""
