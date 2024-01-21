@@ -8,6 +8,7 @@ import (
 	"github.com/go-delve/delve/pkg/proc/native"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"syscall"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
+var gFile *os.File
 var start = time.Now()
 
 func main() {
@@ -35,7 +37,12 @@ func main() {
 		}
 		killFlag[1] = false
 	}
-
+	// 编译正则表达式
+	re, err := regexp.Compile(*includedPackage)
+	if err != nil {
+		fmt.Println("Error compiling regex:", err)
+		return
+	}
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
@@ -49,7 +56,7 @@ func main() {
 			continue
 		}
 
-		if len(*includedPackage) > 0 && fn.PackageName() != *includedPackage {
+		if len(*includedPackage) > 0 && !re.MatchString(fn.PackageName()) {
 			continue
 		}
 
@@ -116,7 +123,10 @@ func main() {
 }
 
 func logPrint(format string, args ...any) {
-	fmt.Printf(format, args...)
+	if gFile == nil {
+		gFile, _ = os.Create(fmt.Sprintf("stack.log"))
+	}
+	_, _ = fmt.Fprintf(gFile, format, args...)
 }
 
 func getIndents(g *proc.G, offset int64) string {
