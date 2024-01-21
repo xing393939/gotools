@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
@@ -21,6 +22,7 @@ func main() {
 		logPrint("usage: gocallstack [exe|pid]\n")
 		return
 	}
+	includedPackage := flag.String("p", "", "included package")
 	killFlag := [2]bool{false, true}
 	targetGroup, err := native.Launch(os.Args[1:], "", 0, nil, "", [3]string{})
 	if err != nil {
@@ -45,6 +47,11 @@ func main() {
 		if fn.Entry == 0 {
 			continue
 		}
+
+		if len(*includedPackage) > 0 && fn.PackageName() != *includedPackage {
+			continue
+		}
+
 		switch fn.Name {
 		case "gosave_systemstack_switch", "gogo":
 			continue

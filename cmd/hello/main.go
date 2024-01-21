@@ -1,11 +1,13 @@
 package main
 
 import (
+	"github.com/xing393939/gotools/pkg/functrace"
 	"net/http"
 	"time"
 )
 
 func main() {
+	defer functrace.Trace()()
 	client := http.Client{
 		Timeout: 3 * time.Second,
 	}
