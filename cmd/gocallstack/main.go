@@ -25,9 +25,9 @@ func main() {
 	includedPackage := flag.String("p", "", "included package")
 	flag.Parse()
 	killFlag := [2]bool{false, true}
-	targetGroup, err := native.Launch(flag.Args()[1:], "", 0, nil, "", [3]string{})
+	targetGroup, err := native.Launch(flag.Args(), "", 0, nil, "", [3]string{})
 	if err != nil {
-		pid, _ := strconv.Atoi(flag.Args()[1])
+		pid, _ := strconv.Atoi(flag.Args()[0])
 		targetGroup, err = native.Attach(pid, nil)
 		if err != nil {
 			logPrint("exe|pid not found\n")
