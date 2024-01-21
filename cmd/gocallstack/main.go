@@ -23,6 +23,7 @@ func main() {
 		return
 	}
 	includedPackage := flag.String("p", "", "included package")
+	flag.Parse()
 	killFlag := [2]bool{false, true}
 	targetGroup, err := native.Launch(os.Args[1:], "", 0, nil, "", [3]string{})
 	if err != nil {
