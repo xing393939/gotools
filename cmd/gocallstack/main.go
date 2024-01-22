@@ -21,7 +21,7 @@ var start = time.Now()
 
 func main() {
 	if len(os.Args) < 2 {
-		logPrint("usage: gocallstack [exe|pid]\n")
+		fmt.Println("Usage: gocallstack [exe|pid]")
 		return
 	}
 	includedPackage := flag.String("p", "", "included package")
@@ -32,7 +32,7 @@ func main() {
 		pid, _ := strconv.Atoi(flag.Args()[0])
 		targetGroup, err = native.Attach(pid, nil)
 		if err != nil {
-			logPrint("exe|pid not found\n")
+			fmt.Println("exe|pid not found")
 			return
 		}
 		killFlag[1] = false
@@ -51,12 +51,10 @@ func main() {
 		_ = syscall.Kill(targetGroup.Selected.Pid(), syscall.SIGSTOP)
 	}()
 
-	for bid, fn := range targetGroup.Selected.BinInfo().Functions {
-		if fn.Entry == 0 {
-			continue
-		}
+	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
 
-		if len(*includedPackage) > 0 && !re.MatchString(fn.PackageName()) {
+	for _, fn := range targetGroup.Selected.BinInfo().Functions {
+		if fn.Entry == 0 {
 			continue
 		}
 
@@ -67,16 +65,26 @@ func main() {
 			continue
 		}
 
-		switch fn.PackageName() {
+		fnPackageName := fn.PackageName()
+		switch fnPackageName {
 		case "encoding/json", "compress/flate", "internal/bytealg":
 			continue
 		case "reflect", "strings", "runtime", "syscall":
 			continue
 		}
 
-		_, err = targetGroup.Selected.SetBreakpoint(bid, fn.Entry, proc.UserBreakpoint, nil)
+		if len(*includedPackage) > 0 && !re.MatchString(fnPackageName) {
+			continue
+		}
+		fnList = append(fnList, fn.Entry)
+	}
+
+	fmt.Println("SetBreakpoint count: ", len(fnList))
+
+	for bid, fn := range fnList {
+		_, err = targetGroup.Selected.SetBreakpoint(bid, fn, proc.UserBreakpoint, nil)
 		if err != nil {
-			logPrint("%s %s\n", fn.Name, err.Error())
+			fmt.Println("SetBreakpoint error ", fn, err.Error())
 		}
 	}
 
