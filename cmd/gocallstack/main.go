@@ -73,18 +73,18 @@ func main() {
 			continue
 		}
 
-		if len(*includedPackage) > 0 && !re.MatchString(fnPackageName) {
+		if len(*includedPackage) > 0 && !re.MatchString(fnPackageName) && fnPackageName != "main" {
 			continue
 		}
 		fnList = append(fnList, fn.Entry)
 	}
 
-	fmt.Println("SetBreakpoint count: ", len(fnList))
+	fmt.Println("SetBreakpoint count:", len(fnList))
 
 	for bid, fn := range fnList {
 		_, err = targetGroup.Selected.SetBreakpoint(bid, fn, proc.UserBreakpoint, nil)
 		if err != nil {
-			fmt.Println("SetBreakpoint error ", fn, err.Error())
+			fmt.Println("SetBreakpoint error:", fn, err.Error())
 		}
 	}
 
