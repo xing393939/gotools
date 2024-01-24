@@ -79,14 +79,17 @@ func main() {
 		fnList = append(fnList, fn.Entry)
 	}
 
-	fmt.Println("SetBreakpoint count:", len(fnList))
-
+	fmt.Printf("SetBreakpoint %d/%d", 0, len(fnList))
 	for bid, fn := range fnList {
 		_, err = targetGroup.Selected.SetBreakpoint(bid, fn, proc.UserBreakpoint, nil)
 		if err != nil {
-			fmt.Println("SetBreakpoint error:", fn, err.Error())
+			logPrint("SetBreakpoint error:", fn, err.Error())
+		}
+		if bid%100 == 99 {
+			fmt.Printf("\rSetBreakpoint %d/%d", bid, len(fnList))
 		}
 	}
+	fmt.Printf("\rSetBreakpoint %d/%d\n", len(fnList), len(fnList))
 
 	err = targetGroup.Continue()
 	for err == nil {
