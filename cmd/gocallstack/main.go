@@ -48,7 +48,7 @@ func main() {
 	go func() {
 		<-quit
 		killFlag[0] = true
-		_ = syscall.Kill(targetGroup.Selected.Pid(), syscall.SIGSTOP)
+		_ = targetGroup.RequestManualStop()
 	}()
 
 	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
