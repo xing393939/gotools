@@ -125,13 +125,13 @@ func main() {
 			}
 			gAddr[goroutine.ID] = breakpoint.Addr
 
-			indents := getIndents(goroutine, stackFlames[0].FramePointerOffset())
+			indents := getIndents(goroutine, &stackFlames[0], targetGroup.Selected.BinInfo())
 			duration := time.Since(start).Seconds()
 			logPrint("%10d%12.6f %s%s at %s#L%d\n", goroutine.ID, duration, indents, breakpoint.FunctionName, breakpoint.File, breakpoint.Line)
 		}
 		err = targetGroup.Continue()
 	}
-	logPrint("%s\n", err.Error())
+	fmt.Printf("%s\n", err.Error())
 }
 
 func logPrint(format string, args ...any) {
@@ -141,18 +141,20 @@ func logPrint(format string, args ...any) {
 	_, _ = fmt.Fprintf(gFile, format, args...)
 }
 
-func getIndents(g *proc.G, offset int64) string {
+func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
 	gSlice, ok := gStack[g.ID]
+	offset := sf.FramePointerOffset()
 	if !ok {
 		gSlice = make([]int64, 1)
 		gSlice[0] = 1
 		gStack[g.ID] = gSlice
-
-		if g.ID != 1 {
+		if g.StartPC == sf.Call.PC {
 			return fmt.Sprintf("goroutine-%d created by ", g.ID)
 		}
 		duration := time.Since(start).Seconds()
-		logPrint("%10d%12.6f goroutine-%d runtime.main\n", g.ID, duration, g.ID)
+		fnObj := bi.PCToFunc(g.StartPC)
+		file, line := bi.EntryLineForFunc(fnObj)
+		logPrint("%10d%12.6f goroutine-%d created by %s at %s#L%d\n", g.ID, duration, g.ID, fnObj.Name, file, line)
 	}
 
 	indents := ""
