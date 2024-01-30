@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
 var gFile *os.File
@@ -127,7 +128,10 @@ func main() {
 
 			indents := getIndents(goroutine, &stackFlames[0], targetGroup.Selected.BinInfo())
 			duration := time.Since(start).Seconds()
-			logPrint("%10d%12.6f %s%s at %s#L%d\n", goroutine.ID, duration, indents, breakpoint.FunctionName, breakpoint.File, breakpoint.Line)
+			logPrint(
+				logFormat, goroutine.ID, duration, indents,
+				breakpoint.FunctionName, breakpoint.File, breakpoint.Line,
+			)
 		}
 		err = targetGroup.Continue()
 	}
@@ -148,13 +152,14 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
 		gSlice = make([]int64, 1)
 		gSlice[0] = 1
 		gStack[g.ID] = gSlice
+		gIndents := fmt.Sprintf("goroutine-%d created by ", g.ID)
 		if g.StartPC == sf.Call.PC {
-			return fmt.Sprintf("goroutine-%d created by ", g.ID)
+			return gIndents
 		}
 		duration := time.Since(start).Seconds()
 		fnObj := bi.PCToFunc(g.StartPC)
 		file, line := bi.EntryLineForFunc(fnObj)
-		logPrint("%10d%12.6f goroutine-%d created by %s at %s#L%d\n", g.ID, duration, g.ID, fnObj.Name, file, line)
+		logPrint(logFormat, g.ID, duration, gIndents, fnObj.Name, file, line)
 	}
 
 	indents := ""
