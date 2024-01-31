@@ -84,8 +84,7 @@ func main() {
 	for bid, fn := range fnList {
 		_, err = targetGroup.Selected.SetBreakpoint(bid, fn, proc.UserBreakpoint, nil)
 		if err != nil {
-			fnObj := targetGroup.Selected.BinInfo().PCToFunc(fn)
-			logPrint("SetBreakpoint error:", fnObj.Name, err.Error())
+			fmt.Printf("\rSetBreakpoint err\n")
 		}
 		if bid%100 == 0 {
 			fmt.Printf("\rSetBreakpoint %d/%d", bid, len(fnList))
