@@ -70,7 +70,7 @@ func main() {
 		switch fnPackageName {
 		case "encoding/json", "compress/flate", "internal/bytealg":
 			continue
-		case "reflect", "strings", "runtime", "syscall":
+		case "reflect", "strings", "runtime", "syscall", "regexp", "regexp/syntax":
 			continue
 		}
 
