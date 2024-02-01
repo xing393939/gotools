@@ -9,12 +9,14 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"sort"
 	"strconv"
 	"syscall"
 	"time"
 )
 
 var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
+var fCount = make(map[uint64]uint64)
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
 var gFile *os.File
@@ -39,21 +41,21 @@ func main() {
 		killFlag[1] = false
 	}
 	// 编译正则表达式
-	re, err := regexp.Compile(*includedPackage)
-	if err != nil {
-		fmt.Println("Error compiling regex:", err)
+	regObj, regErr := regexp.Compile(*includedPackage)
+	if regErr != nil {
+		fmt.Println("Error compiling regex:", regErr)
 		return
 	}
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-quit
+		funcTop10(targetGroup.Selected.BinInfo())
 		killFlag[0] = true
 		_ = targetGroup.RequestManualStop()
 	}()
 
 	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
-
 	for _, fn := range targetGroup.Selected.BinInfo().Functions {
 		if fn.Entry == 0 {
 			continue
@@ -74,7 +76,7 @@ func main() {
 			continue
 		}
 
-		if len(*includedPackage) > 0 && !re.MatchString(fnPackageName) && fnPackageName != "main" {
+		if len(*includedPackage) > 0 && !regObj.MatchString(fnPackageName) && fnPackageName != "main" {
 			continue
 		}
 		fnList = append(fnList, fn.Entry)
@@ -144,7 +146,29 @@ func logPrint(format string, args ...any) {
 	_, _ = fmt.Fprintf(gFile, format, args...)
 }
 
+func funcTop10(bi *proc.BinaryInfo) {
+	tmpSlice := make([][2]uint64, 0, len(fCount))
+	for k, v := range fCount {
+		tmpSlice = append(tmpSlice, [2]uint64{k, v})
+	}
+	sort.Slice(tmpSlice, func(i, j int) bool {
+		return tmpSlice[i][1] > tmpSlice[j][1]
+	})
+	fmt.Println()
+	for _, row := range tmpSlice[:10] {
+		fnObj := bi.PCToFunc(row[0])
+		fmt.Printf("%10d %s\n", row[1], fnObj.Name)
+	}
+}
+
 func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
+	// 统计函数调用次数
+	if _, ok := fCount[sf.Call.PC]; ok {
+		fCount[sf.Call.PC]++
+	} else {
+		fCount[sf.Call.PC] = 1
+	}
+
 	gSlice, ok := gStack[g.ID]
 	offset := sf.FramePointerOffset()
 	if !ok {
