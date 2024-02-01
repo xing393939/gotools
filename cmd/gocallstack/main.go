@@ -70,9 +70,9 @@ func main() {
 
 		fnPackageName := fn.PackageName()
 		switch fnPackageName {
-		case "encoding/json", "compress/flate", "internal/bytealg":
+		case "encoding/json", "compress/flate", "internal/bytealg", "regexp/syntax":
 			continue
-		case "reflect", "strings", "runtime", "syscall", "regexp", "regexp/syntax":
+		case "reflect", "strings", "runtime", "syscall", "regexp", "sort":
 			continue
 		}
 
