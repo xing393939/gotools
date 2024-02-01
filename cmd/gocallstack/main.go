@@ -27,8 +27,19 @@ func main() {
 		fmt.Println("Usage: gocallstack [exe|pid]")
 		return
 	}
-	includedPackage := flag.String("p", "", "included package")
+	packageIncluded := flag.String("p", "", "included package")
+	packageExcluded := flag.String("P", "", "excluded package")
 	flag.Parse()
+
+	// 编译正则表达式
+	regIncluded, regErr1 := regexp.Compile(*packageIncluded)
+	regExcluded, regErr2 := regexp.Compile(*packageExcluded)
+	if regErr1 != nil || regErr2 != nil {
+		fmt.Println("Error compiling regex:", regErr1, regErr2)
+		return
+	}
+
+	// 挂载debug程序
 	killFlag := [2]bool{false, true}
 	targetGroup, err := native.Launch(flag.Args(), "", 0, nil, "", [3]string{})
 	if err != nil {
@@ -40,12 +51,7 @@ func main() {
 		}
 		killFlag[1] = false
 	}
-	// 编译正则表达式
-	regObj, regErr := regexp.Compile(*includedPackage)
-	if regErr != nil {
-		fmt.Println("Error compiling regex:", regErr)
-		return
-	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
@@ -72,11 +78,14 @@ func main() {
 		switch fnPackageName {
 		case "encoding/json", "compress/flate", "internal/bytealg", "regexp/syntax":
 			continue
-		case "reflect", "strings", "runtime", "syscall", "regexp", "sort":
+		case "reflect", "strings", "runtime", "syscall", "regexp":
 			continue
 		}
 
-		if len(*includedPackage) > 0 && !regObj.MatchString(fnPackageName) && fnPackageName != "main" {
+		if len(*packageIncluded) > 0 && !regIncluded.MatchString(fnPackageName) && fnPackageName != "main" {
+			continue
+		}
+		if len(*packageExcluded) > 0 && regExcluded.MatchString(fnPackageName) {
 			continue
 		}
 		fnList = append(fnList, fn.Entry)
