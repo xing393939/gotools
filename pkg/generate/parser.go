@@ -96,13 +96,14 @@ func applyGenerate(p *plugin.Plugin, host string, basePath string, schemes strin
 	}
 	s.SecurityDefinitions = swaggerSecurityDefinitionsObject{}
 	newSecDefValue := swaggerSecuritySchemeObject{}
-	newSecDefValue.Name = "token"
-	newSecDefValue.Description = "Enter JWT Bearer token **_only_**"
 	newSecDefValue.Type = "apiKey"
 	newSecDefValue.In = "header"
+	for _, group := range p.Api.Service.Groups {
+		if group.Annotation.Properties["token"] != "" {
+			newSecDefValue.Name = group.Annotation.Properties["token"]
+		}
+	}
 	s.SecurityDefinitions["apiKey"] = newSecDefValue
-
-	// s.Security = append(s.Security, swaggerSecurityRequirementObject{"apiKey": []string{}})
 
 	requestResponseRefs := refMap{}
 	renderServiceRoutes(p.Api.Service, p.Api.Service.Groups, s.Paths, requestResponseRefs)
