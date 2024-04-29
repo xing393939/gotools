@@ -99,8 +99,8 @@ func applyGenerate(p *plugin.Plugin, host string, basePath string, schemes strin
 	newSecDefValue.Type = "apiKey"
 	newSecDefValue.In = "header"
 	for _, group := range p.Api.Service.Groups {
-		if group.Annotation.Properties["token"] != "" {
-			newSecDefValue.Name = group.Annotation.Properties["token"]
+		if group.Annotation.Properties["header"] != "" {
+			newSecDefValue.Name = group.Annotation.Properties["header"]
 		}
 	}
 	s.SecurityDefinitions["apiKey"] = newSecDefValue
@@ -323,7 +323,7 @@ func renderServiceRoutes(service spec.Service, groups []spec.Group, paths swagge
 
 			operationObject.Description = strings.ReplaceAll(operationObject.Description, "\"", "")
 
-			if group.Annotation.Properties["token"] != "" {
+			if group.Annotation.Properties["header"] != "" {
 				operationObject.Security = &[]swaggerSecurityRequirementObject{{"apiKey": []string{}}}
 			}
 
