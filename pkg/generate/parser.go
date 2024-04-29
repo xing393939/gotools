@@ -322,7 +322,7 @@ func renderServiceRoutes(service spec.Service, groups []spec.Group, paths swagge
 
 			operationObject.Description = strings.ReplaceAll(operationObject.Description, "\"", "")
 
-			if group.Annotation.Properties["jwt"] != "" {
+			if group.Annotation.Properties["token"] != "" {
 				operationObject.Security = &[]swaggerSecurityRequirementObject{{"apiKey": []string{}}}
 			}
 
