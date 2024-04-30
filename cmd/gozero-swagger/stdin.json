@@ -1,0 +1,5 @@
+{
+  "ApiFilePath": "cmd/gozero-swagger/example.api",
+  "Style": "gozero",
+  "Dir": "."
+}
