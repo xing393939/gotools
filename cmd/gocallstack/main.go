@@ -6,16 +6,21 @@ import (
 	"fmt"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
 
 var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
+var logBody strings.Builder
 var fCount = make(map[uint64]uint64)
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
@@ -57,6 +62,7 @@ func main() {
 	go func() {
 		<-quit
 		funcTop10(targetGroup.Selected.BinInfo())
+		uploadToS3()
 		killFlag[0] = true
 		_ = targetGroup.RequestManualStop()
 	}()
@@ -148,11 +154,27 @@ func main() {
 	fmt.Printf("%s\n", err.Error())
 }
 
-func logPrint(format string, args ...any) {
+func logPrint2(format string, args ...any) {
 	if gFile == nil {
 		gFile, _ = os.Create(fmt.Sprintf("stack.log"))
 	}
 	_, _ = fmt.Fprintf(gFile, format, args...)
+}
+
+func logPrint(format string, args ...any) {
+	logBody.WriteString(fmt.Sprintf(format, args...))
+}
+
+func uploadToS3() {
+	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
+	resp, err := http.PostForm(host, url.Values{"body": {logBody.String()}})
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("%s?demo=%s\n", host, string(body))
 }
 
 func funcTop10(bi *proc.BinaryInfo) {
