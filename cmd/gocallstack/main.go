@@ -61,8 +61,6 @@ func main() {
 	signal.Notify(quit, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-quit
-		funcTop10(targetGroup.Selected.BinInfo())
-		uploadToS3()
 		killFlag[0] = true
 		_ = targetGroup.RequestManualStop()
 	}()
@@ -151,6 +149,8 @@ func main() {
 		}
 		err = targetGroup.Continue()
 	}
+	printTop10Func(targetGroup.Selected.BinInfo())
+	uploadToS3()
 	fmt.Printf("%s\n", err.Error())
 }
 
@@ -177,7 +177,7 @@ func uploadToS3() {
 	fmt.Printf("%s?demo=%s\n", host, string(body))
 }
 
-func funcTop10(bi *proc.BinaryInfo) {
+func printTop10Func(bi *proc.BinaryInfo) {
 	tmpSlice := make([][2]uint64, 0, len(fCount))
 	for k, v := range fCount {
 		tmpSlice = append(tmpSlice, [2]uint64{k, v})
