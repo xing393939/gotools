@@ -152,7 +152,7 @@ func main() {
 	}
 	printTop10Func(targetGroup.Selected.BinInfo())
 	uploadToS3()
-	fmt.Printf("%s\n", err.Error())
+	fmt.Printf("Error: %s\n", err.Error())
 }
 
 func logPrint2(format string, args ...any) {
@@ -186,10 +186,11 @@ func printTop10Func(bi *proc.BinaryInfo) {
 	sort.Slice(tmpSlice, func(i, j int) bool {
 		return tmpSlice[i][1] > tmpSlice[j][1]
 	})
-	fmt.Println()
+	fmt.Println("Frequently callee top 10:")
 	for _, row := range tmpSlice[:10] {
 		fnObj := bi.PCToFunc(row[0])
-		fmt.Printf("%10d %s\n", row[1], fnObj.Name)
+		fnPkg := fnObj.PackageName()
+		fmt.Printf("%10d %s %s\n", row[1], fnPkg, fnObj.Name[len(fnPkg):])
 	}
 }
 
