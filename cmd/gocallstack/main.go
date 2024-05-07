@@ -111,7 +111,8 @@ func main() {
 	for err == nil {
 		if killFlag[0] {
 			_ = targetGroup.Detach(killFlag[1])
-			os.Exit(0)
+			err = fmt.Errorf("manual stop")
+			break
 		}
 
 		breakpoint := targetGroup.Selected.CurrentThread().Breakpoint().Breakpoint
