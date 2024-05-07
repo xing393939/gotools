@@ -2,13 +2,14 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"flag"
 	"fmt"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -168,7 +169,19 @@ func logPrint(format string, args ...any) {
 
 func uploadToS3() {
 	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
-	resp, err := http.PostForm(host, url.Values{"body": {logBody.String()}})
+	var buf bytes.Buffer
+	g := gzip.NewWriter(&buf)
+	if _, err := g.Write([]byte(logBody.String())); err != nil {
+		return
+	}
+	if err := g.Close(); err != nil {
+		return
+	}
+	req, _ := http.NewRequest("POST", host, &buf)
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Accept-Encoding", "identity")
+	client := http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		return
