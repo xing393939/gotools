@@ -19,3 +19,12 @@ go install github.com/xing393939/gotools/cmd/gozero-swagger@latest
 // usage
 goctl api plugin -plugin gozero-swagger="swagger -host localhost:8888" -api test.api -dir .
 ```
+
+### proto-strip-omitempty
+```
+// installation
+go install github.com/xing393939/gotools/cmd/proto-strip-omitempty@latest
+
+// usage
+proto-strip-omitempty -folder shop
+```
