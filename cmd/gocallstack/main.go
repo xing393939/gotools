@@ -15,17 +15,15 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
 
 var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
-var logBody strings.Builder
+var logBody bytes.Buffer
 var fCount = make(map[uint64]uint64)
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]uint64)
-var gFile *os.File
 var start = time.Now()
 
 func main() {
@@ -35,6 +33,7 @@ func main() {
 	}
 	packageIncluded := flag.String("p", "", "included package")
 	packageExcluded := flag.String("P", "", "excluded package")
+	isDebug := flag.Bool("debug", false, "debug")
 	flag.Parse()
 
 	// 编译正则表达式
@@ -152,15 +151,17 @@ func main() {
 		err = targetGroup.Continue()
 	}
 	printTop10Func(targetGroup.Selected.BinInfo())
+	printDebug(*isDebug)
 	uploadToS3()
 	fmt.Printf("Error: %s\n", err.Error())
 }
 
-func logPrint2(format string, args ...any) {
-	if gFile == nil {
-		gFile, _ = os.Create(fmt.Sprintf("stack.log"))
+func printDebug(isDebug bool) {
+	if !isDebug {
+		return
 	}
-	_, _ = fmt.Fprintf(gFile, format, args...)
+	gFile, _ := os.Create(fmt.Sprintf("stack.log"))
+	_, _ = gFile.WriteString(logBody.String())
 }
 
 func logPrint(format string, args ...any) {
@@ -171,7 +172,7 @@ func uploadToS3() {
 	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
 	var buf bytes.Buffer
 	g := gzip.NewWriter(&buf)
-	if _, err := g.Write([]byte(logBody.String())); err != nil {
+	if _, err := g.Write(logBody.Bytes()); err != nil {
 		return
 	}
 	if err := g.Close(); err != nil {
