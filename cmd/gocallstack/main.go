@@ -23,7 +23,7 @@ var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
 var logBody bytes.Buffer
 var fCount = make(map[uint64]uint64)
 var gStack = make(map[int64][]int64)
-var gAddr = make(map[int64]uint64)
+var gAddr = make(map[int64]*proc.Stackframe)
 var start = time.Now()
 
 func main() {
@@ -136,10 +136,12 @@ func main() {
 			}
 
 			breakpoint = thread.Breakpoint().Breakpoint
-			if gPrev, ok := gAddr[goroutine.ID]; ok && gPrev == breakpoint.Addr {
+			if gPrev, ok := gAddr[goroutine.ID]; ok &&
+				gPrev.FramePointerOffset() == stackFlames[0].FramePointerOffset() &&
+				gPrev.Ret == stackFlames[0].Ret {
 				continue
 			}
-			gAddr[goroutine.ID] = breakpoint.Addr
+			gAddr[goroutine.ID] = &stackFlames[0]
 
 			indents := getIndents(goroutine, &stackFlames[0], targetGroup.Selected.BinInfo())
 			duration := time.Since(start).Seconds()
