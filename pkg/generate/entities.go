@@ -3,9 +3,8 @@ package generate
 import (
 	"bytes"
 	"encoding/json"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"reflect"
-
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
 )
 
 var swaggerMapTypes = map[string]reflect.Kind{
@@ -261,11 +260,74 @@ type swaggerDefinitionsObject map[string]swaggerSchemaObject
 
 // Internal type mapping from FQMN to descriptor.Message. Used as a set by the
 // findServiceMessages function.
-type messageMap map[string]*descriptor.Message
+type messageMap map[string]*Message
 
 // Internal type mapping from FQEN to descriptor.Enum. Used as a set by the
 // findServiceMessages function.
-type enumMap map[string]*descriptor.Enum
+type enumMap map[string]*Enum
+
+type Message struct {
+	*descriptorpb.DescriptorProto
+	// File is the file where the message is defined.
+	File *File
+	// Outers is a list of outer messages if this message is a nested type.
+	Outers []string
+	// Fields is a list of message fields.
+	Fields []*Field
+	// Index is proto path index of this message in File.
+	Index int
+	// ForcePrefixedName when set to true, prefixes a type with a package prefix.
+	ForcePrefixedName bool
+}
+
+type Enum struct {
+	*descriptorpb.EnumDescriptorProto
+	// File is the file where the enum is defined
+	File *File
+	// Outers is a list of outer messages if this enum is a nested type.
+	Outers []string
+	// Index is a enum index value.
+	Index int
+	// ForcePrefixedName when set to true, prefixes a type with a package prefix.
+	ForcePrefixedName bool
+}
+
+type File struct {
+	*descriptorpb.FileDescriptorProto
+	// GoPkg is the go package of the go file generated from this file.
+	GoPkg GoPackage
+	// GeneratedFilenamePrefix is used to construct filenames for generated
+	// files associated with this source file.
+	//
+	// For example, the source file "dir/foo.proto" might have a filename prefix
+	// of "dir/foo". Appending ".pb.go" produces an output file of "dir/foo.pb.go".
+	GeneratedFilenamePrefix string
+	// Messages is the list of messages defined in this file.
+	Messages []*Message
+	// Enums is the list of enums defined in this file.
+	Enums []*Enum
+	// Services is the list of services defined in this file.
+	Services []interface{}
+}
+
+type Field struct {
+	*descriptorpb.FieldDescriptorProto
+	// Message is the message type which this field belongs to.
+	Message *Message
+	// FieldMessage is the message type of the field.
+	FieldMessage *Message
+	// ForcePrefixedName when set to true, prefixes a type with a package prefix.
+	ForcePrefixedName bool
+}
+
+type GoPackage struct {
+	// Path is the package path to the package.
+	Path string
+	// Name is the package name of the package
+	Name string
+	// Alias is an alias of the package unique within the current invocation of gRPC-Gateway generator.
+	Alias string
+}
 
 // Internal type to store used references.
 type refMap map[string]struct{}
