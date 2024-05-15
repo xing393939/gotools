@@ -134,16 +134,16 @@ func main() {
 			if len(stackFlames) == 0 {
 				continue
 			}
-
-			breakpoint = thread.Breakpoint().Breakpoint
+			gCurr := &stackFlames[0]
 			if gPrev, ok := gAddr[goroutine.ID]; ok &&
-				gPrev.FramePointerOffset() == stackFlames[0].FramePointerOffset() &&
-				gPrev.Ret == stackFlames[0].Ret {
+				gPrev.FramePointerOffset() == gCurr.FramePointerOffset() &&
+				gPrev.Current.PC == gCurr.Current.PC {
 				continue
 			}
-			gAddr[goroutine.ID] = &stackFlames[0]
+			gAddr[goroutine.ID] = gCurr
 
-			indents := getIndents(goroutine, &stackFlames[0], targetGroup.Selected.BinInfo())
+			breakpoint = thread.Breakpoint().Breakpoint
+			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo())
 			duration := time.Since(start).Seconds()
 			logPrint(
 				logFormat, goroutine.ID, duration, indents,
