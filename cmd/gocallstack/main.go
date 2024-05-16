@@ -172,7 +172,7 @@ func logPrint(format string, args ...any) {
 }
 
 func uploadToS3() {
-	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
+	host := "http://getlocx.net/callstack"
 	var buf bytes.Buffer
 	g := gzip.NewWriter(&buf)
 	if _, err := g.Write(logBody.Bytes()); err != nil {
@@ -192,7 +192,7 @@ func uploadToS3() {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("%s?demo=%s\n", host, string(body))
+	fmt.Printf("Webui: %s?demo=%s\n", host, string(body))
 }
 
 func printTop10Func(bi *proc.BinaryInfo) {
