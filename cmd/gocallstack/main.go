@@ -172,7 +172,7 @@ func logPrint(format string, args ...any) {
 }
 
 func uploadToS3() {
-	host := "http://getlocx.net/callstack"
+	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
 	var buf bytes.Buffer
 	g := gzip.NewWriter(&buf)
 	if _, err := g.Write(logBody.Bytes()); err != nil {
