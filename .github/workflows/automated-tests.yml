@@ -23,7 +23,7 @@ jobs:
         run: go get -u golang.org/x/lint/golint
 
       - name: Get Go Cyclo
-        run: go get github.com/fzipp/gocyclo/cmd/gocyclo
+        run: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 
       - name: Go Mod Tidy
         run: go mod tidy
