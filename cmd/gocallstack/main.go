@@ -115,6 +115,7 @@ func main() {
 			continue
 		}
 
+		evalCfg := proc.LoadConfig{}
 		for _, thread := range targetGroup.ThreadList() {
 			if thread.Breakpoint().Breakpoint == nil || !thread.Breakpoint().Active {
 				continue
@@ -138,12 +139,14 @@ func main() {
 			}
 			gAddr[goroutine.ID] = gCurr
 
+			evalScope, _ := proc.ThreadScope(targetGroup.Selected, thread)
+			args, _ := evalScope.FunctionArguments(evalCfg)
 			breakpoint = thread.Breakpoint().Breakpoint
-			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo())
+			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo(), args)
 			duration := time.Since(start).Microseconds()
 			callstack.LogPrint(
 				goroutine.ID, duration, indents,
-				breakpoint.FunctionName, breakpoint.File, breakpoint.Line,
+				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args,
 			)
 		}
 		err = targetGroup.Continue()
@@ -173,7 +176,7 @@ func printTop10Func(bi *proc.BinaryInfo) {
 	}
 }
 
-func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) int64 {
+func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*proc.Variable) int64 {
 	// 统计函数调用次数
 	if _, ok := fCount[sf.Call.PC]; ok {
 		fCount[sf.Call.PC]++
@@ -192,7 +195,7 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) int64 {
 		duration := time.Since(start).Microseconds()
 		fnObj := bi.PCToFunc(g.StartPC)
 		file, line := bi.EntryLineForFunc(fnObj)
-		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line)
+		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args)
 	}
 
 	indentLen := 0

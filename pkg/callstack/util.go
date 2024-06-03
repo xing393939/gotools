@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/go-delve/delve/pkg/proc"
 	"io"
 	"net/http"
 	"os"
@@ -13,15 +14,17 @@ import (
 type logBodyStruct struct {
 	ActionList   [][2][]int64
 	FuncNameList *UniqueList
+	FuncArgList  *UniqueList
 	FileList     *UniqueList
 }
 
 var logBody = logBodyStruct{
 	FuncNameList: NewUniqueList(),
+	FuncArgList:  NewUniqueList(),
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(gId, duration, gIndents int64, funcName, file string, line int) {
+func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable) {
 	if gIndents == 0 {
 		funcName = fmt.Sprintf("goroutine-%d created by %s", gId, funcName)
 	}
@@ -33,6 +36,12 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int) {
 	action := [2][]int64{
 		actionMain,
 		nil,
+	}
+	if len(args) > 0 {
+		for _, arg := range args {
+			i := logBody.FuncArgList.Insert(arg.DwarfType.String())
+			action[1] = append(action[1], i)
+		}
 	}
 	logBody.ActionList = append(logBody.ActionList, action)
 }
