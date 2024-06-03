@@ -39,6 +39,9 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 	}
 	if len(args) > 0 {
 		for _, arg := range args {
+			if (arg.Flags & proc.VariableReturnArgument) != 0 {
+				continue
+			}
 			i := logBody.FuncArgList.Insert(arg.DwarfType.String())
 			action[1] = append(action[1], i)
 		}
