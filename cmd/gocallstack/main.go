@@ -2,14 +2,11 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"flag"
 	"fmt"
 	"github.com/go-delve/delve/pkg/proc"
 	"github.com/go-delve/delve/pkg/proc/native"
-	"io"
-	"net/http"
+	"github.com/xing393939/gotools/pkg/callstack"
 	"os"
 	"os/signal"
 	"regexp"
@@ -19,8 +16,6 @@ import (
 	"time"
 )
 
-var logFormat = "%10d%12.6f %s%s at %s#L%d\n"
-var logBody bytes.Buffer
 var fCount = make(map[uint64]uint64)
 var gStack = make(map[int64][]int64)
 var gAddr = make(map[int64]*proc.Stackframe)
@@ -137,7 +132,7 @@ func main() {
 			gCurr := &stackFlames[0]
 			if gPrev, ok := gAddr[goroutine.ID]; ok &&
 				gPrev.FramePointerOffset() == gCurr.FramePointerOffset() &&
-				gPrev.Current.PC == gCurr.Current.PC &&
+				gPrev.Call.PC == gCurr.Call.PC &&
 				gPrev.Ret == gCurr.Ret {
 				continue
 			}
@@ -145,54 +140,18 @@ func main() {
 
 			breakpoint = thread.Breakpoint().Breakpoint
 			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo())
-			duration := time.Since(start).Seconds()
-			logPrint(
-				logFormat, goroutine.ID, duration, indents,
+			duration := time.Since(start).Microseconds()
+			callstack.LogPrint(
+				goroutine.ID, duration, indents,
 				breakpoint.FunctionName, breakpoint.File, breakpoint.Line,
 			)
 		}
 		err = targetGroup.Continue()
 	}
 	printTop10Func(targetGroup.Selected.BinInfo())
-	printDebug(*isDebug)
-	uploadToS3()
+	callstack.PrintDebug(*isDebug)
+	callstack.UploadToS3()
 	fmt.Printf("Error: %s\n", err.Error())
-}
-
-func printDebug(isDebug bool) {
-	if !isDebug {
-		return
-	}
-	gFile, _ := os.Create(fmt.Sprintf("stack.log"))
-	_, _ = gFile.WriteString(logBody.String())
-}
-
-func logPrint(format string, args ...any) {
-	logBody.WriteString(fmt.Sprintf(format, args...))
-}
-
-func uploadToS3() {
-	host := "https://5xfd05tkng.execute-api.cn-northwest-1.amazonaws.com.cn/callstack"
-	var buf bytes.Buffer
-	g := gzip.NewWriter(&buf)
-	if _, err := g.Write(logBody.Bytes()); err != nil {
-		return
-	}
-	if err := g.Close(); err != nil {
-		return
-	}
-	req, _ := http.NewRequest("POST", host, &buf)
-	req.Header.Set("Content-Encoding", "gzip")
-	req.Header.Set("Accept-Encoding", "identity")
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Webui: %s?demo=%s\n", host, string(body))
 }
 
 func printTop10Func(bi *proc.BinaryInfo) {
@@ -214,7 +173,7 @@ func printTop10Func(bi *proc.BinaryInfo) {
 	}
 }
 
-func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
+func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) int64 {
 	// 统计函数调用次数
 	if _, ok := fCount[sf.Call.PC]; ok {
 		fCount[sf.Call.PC]++
@@ -223,28 +182,26 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
 	}
 
 	gSlice, ok := gStack[g.ID]
-	offset := sf.FramePointerOffset()
 	if !ok {
 		gSlice = make([]int64, 1)
 		gSlice[0] = 1
 		gStack[g.ID] = gSlice
-		gIndents := fmt.Sprintf("goroutine-%d created by ", g.ID)
 		if g.StartPC == sf.Call.PC {
-			return gIndents
+			return 0
 		}
-		duration := time.Since(start).Seconds()
+		duration := time.Since(start).Microseconds()
 		fnObj := bi.PCToFunc(g.StartPC)
 		file, line := bi.EntryLineForFunc(fnObj)
-		logPrint(logFormat, g.ID, duration, gIndents, fnObj.Name, file, line)
+		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line)
 	}
 
-	indents := ""
+	indentLen := 0
+	offset := sf.FramePointerOffset()
 	for _, sp := range gSlice {
 		if offset < sp {
-			indents = indents + "."
+			indentLen = indentLen + 1
 		}
 	}
-	indentLen := len(indents)
 	if indentLen < len(gSlice) {
 		gSlice[indentLen] = offset
 		gSlice = gSlice[:indentLen+1]
@@ -252,5 +209,5 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo) string {
 		gSlice = append(gSlice, offset)
 	}
 	gStack[g.ID] = gSlice
-	return indents
+	return int64(indentLen)
 }
