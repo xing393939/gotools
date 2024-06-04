@@ -22,13 +22,15 @@ var gAddr = make(map[int64]*proc.Stackframe)
 var start = time.Now()
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: gocallstack [exe|pid]")
-		return
-	}
+	var importantBreakpoints callstack.MultiString
+	flag.Var(&importantBreakpoints, "bp", "important breakpoints")
 	packageIncluded := flag.String("p", "", "included package")
 	packageExcluded := flag.String("P", "", "excluded package")
-	isDebug := flag.Bool("debug", false, "debug")
+	isDebug := flag.Bool("debug", false, "save debug log")
+	flag.Usage = func() {
+		fmt.Println("Usage: gocallstack exe-or-pid")
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	// 编译正则表达式
@@ -36,6 +38,10 @@ func main() {
 	regExcluded, regErr2 := regexp.Compile(*packageExcluded)
 	if regErr1 != nil || regErr2 != nil {
 		fmt.Println("Error compiling regex:", regErr1, regErr2)
+		return
+	}
+	if flag.NArg() < 1 {
+		flag.Usage()
 		return
 	}
 
