@@ -42,16 +42,14 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 		nil,
 		nil,
 	}
-	if len(args) > 0 {
-		for _, arg := range args {
-			if (arg.Flags & proc.VariableArgument) != 0 {
-				action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg)))
-			}
-			if evals != nil {
-				str := api.ConvertVar(evals).MultilineString("", "")
-				action[2] = append(action[2], logBody.FuncArgList.Insert(str))
-			}
+	for _, arg := range args {
+		if (arg.Flags & proc.VariableArgument) != 0 {
+			action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg)))
 		}
+	}
+	if evals != nil {
+		str := api.ConvertVar(evals).MultilineString("", "")
+		action[2] = append(action[2], logBody.FuncArgList.Insert(str))
 	}
 	logBody.ActionList = append(logBody.ActionList, action)
 }
