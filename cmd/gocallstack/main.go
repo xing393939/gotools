@@ -119,6 +119,7 @@ func main() {
 	}
 	fmt.Printf("\rSetBreakpoint %d/%d\n", len(fnList), len(fnList))
 
+	evalCfg := proc.LoadConfig{MaxStringLen: 64, MaxStructFields: 3}
 	err = targetGroup.Continue()
 	for err == nil {
 		if killFlag[0] {
@@ -132,7 +133,6 @@ func main() {
 			continue
 		}
 
-		evalCfg := proc.LoadConfig{}
 		for _, thread := range targetGroup.ThreadList() {
 			if thread.Breakpoint().Breakpoint == nil || !thread.Breakpoint().Active {
 				continue

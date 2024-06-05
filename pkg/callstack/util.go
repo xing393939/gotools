@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -52,10 +53,11 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 	logBody.ActionList = append(logBody.ActionList, action)
 }
 
-func getArgStr(arg *proc.Variable, argVal bool) string {
-	str := arg.TypeString()
-	if len(arg.Children) > 0 {
+func getArgStr(arg *proc.Variable, argVal bool) (str string) {
+	if arg.Kind == reflect.Interface && len(arg.Children) > 0 {
 		str = arg.Children[0].TypeString()
+	} else {
+		str = arg.TypeString()
 	}
 	if argVal {
 		str = fmt.Sprintf("%s=%v", str, arg.Value)
