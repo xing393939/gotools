@@ -9,10 +9,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 type logBodyStruct struct {
-	ActionList   [][2][]int64
+	ActionList   [][3][]int64
 	FuncNameList *UniqueList
 	FuncArgList  *UniqueList
 	FileList     *UniqueList
@@ -24,7 +26,7 @@ var logBody = logBodyStruct{
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable) {
+func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable, argVal bool) {
 	if gIndents == 0 {
 		funcName = fmt.Sprintf("goroutine-%d created by %s", gId, funcName)
 	}
@@ -33,25 +35,32 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 		logBody.FuncNameList.Insert(funcName),
 		logBody.FileList.Insert(file), int64(line),
 	}
-	action := [2][]int64{
+	action := [3][]int64{
 		actionMain,
+		nil,
 		nil,
 	}
 	if len(args) > 0 {
 		for _, arg := range args {
-			if (arg.Flags & proc.VariableReturnArgument) != 0 {
-				continue
-			}
-			if len(arg.Children) > 0 {
-				i := logBody.FuncArgList.Insert(arg.Children[0].TypeString())
-				action[1] = append(action[1], i)
+			if (arg.Flags & proc.VariableArgument) != 0 {
+				action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg, argVal)))
 			} else {
-				i := logBody.FuncArgList.Insert(arg.TypeString())
-				action[1] = append(action[1], i)
+				action[2] = append(action[2], logBody.FuncArgList.Insert(getArgStr(arg, argVal)))
 			}
 		}
 	}
 	logBody.ActionList = append(logBody.ActionList, action)
+}
+
+func getArgStr(arg *proc.Variable, argVal bool) string {
+	str := arg.TypeString()
+	if len(arg.Children) > 0 {
+		str = arg.Children[0].TypeString()
+	}
+	if argVal {
+		str = fmt.Sprintf("%s=%v", str, arg.Value)
+	}
+	return str
 }
 
 func UploadToS3() {
@@ -86,4 +95,25 @@ func PrintDebug(isDebug bool) {
 	gFile, _ := os.Create(fmt.Sprintf("stack.log"))
 	logBodyBytes, _ := json.Marshal(logBody)
 	_, _ = gFile.Write(logBodyBytes)
+}
+
+func GetAddrByPath(bi *proc.BinaryInfo, path string) uint64 {
+	v := strings.Split(path, ":")
+	if len(v) > 2 {
+		v = []string{strings.Join(v[0:len(v)-1], ":"), v[len(v)-1]}
+	}
+	if len(v) != 2 {
+		fnList, _ := bi.FindFunction(path)
+		if len(fnList) > 0 {
+			return fnList[0].Entry
+		}
+		return 0
+	}
+	filename := v[0]
+	line, _ := strconv.Atoi(v[1])
+	rs := bi.AllPCsForFileLines(filename, []int{line})
+	if len(rs[line]) > 0 {
+		return rs[line][0]
+	}
+	return 0
 }

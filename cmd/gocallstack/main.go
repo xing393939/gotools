@@ -67,6 +67,14 @@ func main() {
 	}()
 
 	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
+	importantAddrMap := make(map[uint64]struct{})
+	for _, path := range importantBreakpoints {
+		fn := callstack.GetAddrByPath(targetGroup.Selected.BinInfo(), path)
+		if fn > 0 {
+			importantAddrMap[fn] = struct{}{}
+			fnList = append(fnList, fn)
+		}
+	}
 	for _, fn := range targetGroup.Selected.BinInfo().Functions {
 		if fn.Entry == 0 {
 			continue
@@ -91,6 +99,9 @@ func main() {
 			continue
 		}
 		if len(*packageExcluded) > 0 && regExcluded.MatchString(fnPackageName) {
+			continue
+		}
+		if _, ok := importantAddrMap[fn.Entry]; ok {
 			continue
 		}
 		fnList = append(fnList, fn.Entry)
@@ -150,9 +161,13 @@ func main() {
 			breakpoint = thread.Breakpoint().Breakpoint
 			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo(), args)
 			duration := time.Since(start).Microseconds()
+			argVal := false
+			if _, ok := importantAddrMap[breakpoint.Addr]; ok {
+				argVal = true
+			}
 			callstack.LogPrint(
 				goroutine.ID, duration, indents,
-				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args,
+				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args, argVal,
 			)
 		}
 		err = targetGroup.Continue()
@@ -201,7 +216,7 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*pro
 		duration := time.Since(start).Microseconds()
 		fnObj := bi.PCToFunc(g.StartPC)
 		file, line := bi.EntryLineForFunc(fnObj)
-		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args)
+		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args, false)
 	}
 
 	indentLen := 0
