@@ -49,7 +49,7 @@ func main() {
 	killFlag := [2]bool{false, true}
 	targetGroup, err := native.Launch(flag.Args(), "", 0, nil, "", [3]string{})
 	if err != nil {
-		pid, _ := strconv.Atoi(flag.Args()[0])
+		pid, _ := strconv.Atoi(flag.Arg(0))
 		targetGroup, err = native.Attach(pid, nil)
 		if err != nil {
 			fmt.Println("exe|pid not found")
