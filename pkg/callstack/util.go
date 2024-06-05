@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-delve/delve/pkg/proc"
+	"github.com/go-delve/delve/service/api"
 	"io"
 	"net/http"
 	"os"
@@ -27,7 +28,7 @@ var logBody = logBodyStruct{
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable, argVal bool) {
+func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable, evals *proc.Variable) {
 	if gIndents == 0 {
 		funcName = fmt.Sprintf("goroutine-%d created by %s", gId, funcName)
 	}
@@ -44,25 +45,24 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 	if len(args) > 0 {
 		for _, arg := range args {
 			if (arg.Flags & proc.VariableArgument) != 0 {
-				action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg, argVal)))
-			} else {
-				action[2] = append(action[2], logBody.FuncArgList.Insert(getArgStr(arg, argVal)))
+				action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg)))
+			}
+			if evals != nil {
+				str := api.ConvertVar(evals).MultilineString("", "")
+				action[2] = append(action[2], logBody.FuncArgList.Insert(str))
 			}
 		}
 	}
 	logBody.ActionList = append(logBody.ActionList, action)
 }
 
-func getArgStr(arg *proc.Variable, argVal bool) (str string) {
+func getArgStr(arg *proc.Variable) (str string) {
 	if arg.Kind == reflect.Interface && len(arg.Children) > 0 {
-		str = arg.Children[0].TypeString()
+		str = arg.Name + "=" + arg.Children[0].TypeString()
 	} else {
-		str = arg.TypeString()
+		str = arg.Name + "=" + arg.TypeString()
 	}
-	if argVal {
-		str = fmt.Sprintf("%s=%v", str, arg.Value)
-	}
-	return str
+	return
 }
 
 func UploadToS3() {
@@ -99,23 +99,20 @@ func PrintDebug(isDebug bool) {
 	_, _ = gFile.Write(logBodyBytes)
 }
 
-func GetAddrByPath(bi *proc.BinaryInfo, path string) uint64 {
-	v := strings.Split(path, ":")
-	if len(v) > 2 {
-		v = []string{strings.Join(v[0:len(v)-1], ":"), v[len(v)-1]}
-	}
-	if len(v) != 2 {
+func GetAddrByPath(bi *proc.BinaryInfo, bp string) (uint64, string) {
+	path, expr, _ := strings.Cut(bp, " ")
+	filename, lineStr, _ := strings.Cut(path, ":")
+	if lineStr == "" {
 		fnList, _ := bi.FindFunction(path)
 		if len(fnList) > 0 {
-			return fnList[0].Entry
+			return fnList[0].Entry, expr
 		}
-		return 0
+		return 0, expr
 	}
-	filename := v[0]
-	line, _ := strconv.Atoi(v[1])
+	line, _ := strconv.Atoi(lineStr)
 	rs := bi.AllPCsForFileLines(filename, []int{line})
 	if len(rs[line]) > 0 {
-		return rs[line][0]
+		return rs[line][0], expr
 	}
-	return 0
+	return 0, expr
 }

@@ -67,11 +67,11 @@ func main() {
 	}()
 
 	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
-	importantAddrMap := make(map[uint64]struct{})
+	importantAddrMap := make(map[uint64]string)
 	for _, path := range importantBreakpoints {
-		fn := callstack.GetAddrByPath(targetGroup.Selected.BinInfo(), path)
+		fn, expr := callstack.GetAddrByPath(targetGroup.Selected.BinInfo(), path)
 		if fn > 0 {
-			importantAddrMap[fn] = struct{}{}
+			importantAddrMap[fn] = expr
 			fnList = append(fnList, fn)
 		}
 	}
@@ -120,6 +120,14 @@ func main() {
 	fmt.Printf("\rSetBreakpoint %d/%d\n", len(fnList), len(fnList))
 
 	evalCfg := proc.LoadConfig{MaxStringLen: 64, MaxStructFields: 3}
+	evalImportantCfg := proc.LoadConfig{
+		FollowPointers:     true,
+		MaxVariableRecurse: 1,
+		MaxStringLen:       256,
+		MaxArrayValues:     64,
+		MaxStructFields:    64,
+		MaxMapBuckets:      64,
+	}
 	err = targetGroup.Continue()
 	for err == nil {
 		if killFlag[0] {
@@ -158,16 +166,16 @@ func main() {
 
 			evalScope, _ := proc.ThreadScope(targetGroup.Selected, thread)
 			args, _ := evalScope.FunctionArguments(evalCfg)
+			var evals *proc.Variable
+			if expr, ok := importantAddrMap[breakpoint.Addr]; ok && expr != "" {
+				evals, _ = evalScope.EvalExpression(expr, evalImportantCfg)
+			}
 			breakpoint = thread.Breakpoint().Breakpoint
 			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo(), args)
 			duration := time.Since(start).Microseconds()
-			argVal := false
-			if _, ok := importantAddrMap[breakpoint.Addr]; ok {
-				argVal = true
-			}
 			callstack.LogPrint(
 				goroutine.ID, duration, indents,
-				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args, argVal,
+				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args, evals,
 			)
 		}
 		err = targetGroup.Continue()
@@ -216,7 +224,7 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*pro
 		duration := time.Since(start).Microseconds()
 		fnObj := bi.PCToFunc(g.StartPC)
 		file, line := bi.EntryLineForFunc(fnObj)
-		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args, false)
+		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args, nil)
 	}
 
 	indentLen := 0
