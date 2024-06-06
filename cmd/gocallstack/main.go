@@ -160,7 +160,7 @@ func main() {
 			gCurr := &stackFlames[0]
 			if gPrev, ok := gAddr[goroutine.ID]; ok &&
 				gPrev.FramePointerOffset() == gCurr.FramePointerOffset() &&
-				gPrev.Current.PC == gCurr.Current.PC &&
+				gPrev.Call.PC == gCurr.Call.PC &&
 				gPrev.Ret == gCurr.Ret {
 				continue
 			}
