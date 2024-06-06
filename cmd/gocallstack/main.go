@@ -67,11 +67,11 @@ func main() {
 	}()
 
 	fnList := make([]uint64, 0, len(targetGroup.Selected.BinInfo().Functions))
-	importantAddrMap := make(map[uint64]string)
+	importantAddrMap := make(map[uint64][]string)
 	for _, path := range importantBreakpoints {
-		fn, expr := callstack.GetAddrByPath(targetGroup.Selected.BinInfo(), path)
+		fn, exprArr := callstack.GetAddrByPath(targetGroup.Selected.BinInfo(), path)
 		if fn > 0 {
-			importantAddrMap[fn] = expr
+			importantAddrMap[fn] = exprArr
 			fnList = append(fnList, fn)
 		}
 	}
@@ -166,9 +166,15 @@ func main() {
 
 			evalScope, _ := proc.ThreadScope(targetGroup.Selected, thread)
 			args, _ := evalScope.FunctionArguments(evalCfg)
-			var evals *proc.Variable
-			if expr, ok := importantAddrMap[breakpoint.Addr]; ok && expr != "" {
-				evals, _ = evalScope.EvalExpression(expr, evalImportantCfg)
+			var evals []*proc.Variable
+			if exprArr, ok := importantAddrMap[breakpoint.Addr]; ok {
+				for _, expr := range exprArr {
+					evalV, evalE := evalScope.EvalExpression(expr, evalImportantCfg)
+					if evalE != nil {
+						evalV = &proc.Variable{}
+					}
+					evals = append(evals, evalV)
+				}
 			}
 			breakpoint = thread.Breakpoint().Breakpoint
 			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo(), args)

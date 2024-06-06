@@ -28,7 +28,7 @@ var logBody = logBodyStruct{
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args []*proc.Variable, evals *proc.Variable) {
+func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args, evals []*proc.Variable) {
 	if gIndents == 0 {
 		funcName = fmt.Sprintf("goroutine-%d created by %s", gId, funcName)
 	}
@@ -47,8 +47,8 @@ func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, ar
 			action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg)))
 		}
 	}
-	if evals != nil {
-		str := api.ConvertVar(evals).MultilineString("", "")
+	for _, eval := range evals {
+		str := api.ConvertVar(eval).MultilineString("", "")
 		action[2] = append(action[2], logBody.FuncArgList.Insert(str))
 	}
 	logBody.ActionList = append(logBody.ActionList, action)
@@ -97,20 +97,23 @@ func PrintDebug(isDebug bool) {
 	_, _ = gFile.Write(logBodyBytes)
 }
 
-func GetAddrByPath(bi *proc.BinaryInfo, bp string) (uint64, string) {
-	path, expr, _ := strings.Cut(bp, " ")
-	filename, lineStr, _ := strings.Cut(path, ":")
-	if lineStr == "" {
-		fnList, _ := bi.FindFunction(path)
+func GetAddrByPath(bi *proc.BinaryInfo, bp string) (uint64, []string) {
+	paths := strings.Split(strings.TrimSpace(bp), " ")
+	v := strings.Split(paths[0], ":")
+	if len(v) > 2 {
+		v = []string{strings.Join(v[0:len(v)-1], ":"), v[len(v)-1]}
+	}
+	if len(v) != 2 {
+		fnList, _ := bi.FindFunction(paths[0])
 		if len(fnList) > 0 {
-			return fnList[0].Entry, expr
+			return fnList[0].Entry, paths[1:]
 		}
-		return 0, expr
+		return 0, paths[1:]
 	}
-	line, _ := strconv.Atoi(lineStr)
-	rs := bi.AllPCsForFileLines(filename, []int{line})
+	line, _ := strconv.Atoi(v[1])
+	rs := bi.AllPCsForFileLines(v[0], []int{line})
 	if len(rs[line]) > 0 {
-		return rs[line][0], expr
+		return rs[line][0], paths[1:]
 	}
-	return 0, expr
+	return 0, paths[1:]
 }
