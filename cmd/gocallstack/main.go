@@ -28,7 +28,7 @@ func main() {
 	packageExcluded := flag.String("P", "", "excluded package")
 	isDebug := flag.Bool("debug", false, "save debug log")
 	flag.Usage = func() {
-		fmt.Println("Usage: gocallstack exe-or-pid")
+		fmt.Println("Usage: gocallstack exe|pid")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -73,6 +73,8 @@ func main() {
 		if fn > 0 {
 			importantAddrMap[fn] = exprArr
 			fnList = append(fnList, fn)
+		} else {
+			fmt.Println("Unknown bp:", path)
 		}
 	}
 	for _, fn := range targetGroup.Selected.BinInfo().Functions {
