@@ -234,7 +234,7 @@ func getIndents(g *proc.G, sf *proc.Stackframe) (int64, uint64) {
 		gSlice[0] = 1
 		gStack[g.ID] = gSlice
 		if g.StartPC == sf.Call.PC {
-			return 0, startPC
+			return 0, 0
 		}
 		startPC = g.StartPC
 	}
