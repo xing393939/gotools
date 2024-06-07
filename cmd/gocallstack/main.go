@@ -178,12 +178,18 @@ func main() {
 					evals = append(evals, evalV)
 				}
 			}
-			breakpoint = thread.Breakpoint().Breakpoint
-			indents := getIndents(goroutine, gCurr, targetGroup.Selected.BinInfo(), args)
+
 			duration := time.Since(start).Microseconds()
+			indents, startPC := getIndents(goroutine, gCurr)
+			if startPC > 0 {
+				callstack.LogPrint(
+					targetGroup.Selected.BinInfo(),
+					goroutine.ID, duration, 0, startPC, 0, nil, nil,
+				)
+			}
 			callstack.LogPrint(
-				goroutine.ID, duration, indents,
-				breakpoint.FunctionName, breakpoint.File, breakpoint.Line, args, evals,
+				targetGroup.Selected.BinInfo(),
+				goroutine.ID, duration, indents, gCurr.Call.PC, gCurr.Ret, args, evals,
 			)
 		}
 		err = targetGroup.Continue()
@@ -213,7 +219,8 @@ func printTop10Func(bi *proc.BinaryInfo) {
 	}
 }
 
-func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*proc.Variable) int64 {
+func getIndents(g *proc.G, sf *proc.Stackframe) (int64, uint64) {
+	startPC := uint64(0)
 	// 统计函数调用次数
 	if _, ok := fCount[sf.Call.PC]; ok {
 		fCount[sf.Call.PC]++
@@ -227,12 +234,9 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*pro
 		gSlice[0] = 1
 		gStack[g.ID] = gSlice
 		if g.StartPC == sf.Call.PC {
-			return 0
+			return 0, startPC
 		}
-		duration := time.Since(start).Microseconds()
-		fnObj := bi.PCToFunc(g.StartPC)
-		file, line := bi.EntryLineForFunc(fnObj)
-		callstack.LogPrint(g.ID, duration, 0, fnObj.Name, file, line, args, nil)
+		startPC = g.StartPC
 	}
 
 	indentLen := 0
@@ -249,5 +253,5 @@ func getIndents(g *proc.G, sf *proc.Stackframe, bi *proc.BinaryInfo, args []*pro
 		gSlice = append(gSlice, offset)
 	}
 	gStack[g.ID] = gSlice
-	return int64(indentLen)
+	return int64(indentLen), startPC
 }

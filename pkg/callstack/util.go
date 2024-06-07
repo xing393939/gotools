@@ -28,14 +28,17 @@ var logBody = logBodyStruct{
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(gId, duration, gIndents int64, funcName, file string, line int, args, evals []*proc.Variable) {
+func LogPrint(bi *proc.BinaryInfo, gId, duration, gIndents int64, pc, ret uint64, args, evals []*proc.Variable) {
+	fnFile, fnLine, fnObj := bi.PCToLine(pc)
 	if gIndents == 0 {
-		funcName = fmt.Sprintf("goroutine-%d created by %s", gId, funcName)
+		fnObj.Name = fmt.Sprintf("goroutine-%d created by %s", gId, fnObj.Name)
 	}
+	retFile, retLine, _ := bi.PCToLine(ret)
 	actionMain := []int64{
 		gId, duration, gIndents,
-		logBody.FuncNameList.Insert(funcName),
-		logBody.FileList.Insert(file), int64(line),
+		logBody.FuncNameList.Insert(fnObj.Name),
+		logBody.FileList.Insert(fnFile), int64(fnLine),
+		logBody.FileList.Insert(retFile), int64(retLine),
 	}
 	action := [3][]int64{
 		actionMain,
