@@ -30,13 +30,14 @@ var logBody = logBodyStruct{
 
 func LogPrint(bi *proc.BinaryInfo, gId, duration, gIndents int64, pc, ret uint64, args, evals []*proc.Variable) {
 	fnFile, fnLine, fnObj := bi.PCToLine(pc)
+	fnName := fnObj.Name
 	if gIndents == 0 {
-		fnObj.Name = fmt.Sprintf("goroutine-%d created by %s", gId, fnObj.Name)
+		fnName = fmt.Sprintf("goroutine-%d created by %s", gId, fnName)
 	}
 	retFile, retLine, _ := bi.PCToLine(ret)
 	actionMain := []int64{
 		gId, duration, gIndents,
-		logBody.FuncNameList.Insert(fnObj.Name),
+		logBody.FuncNameList.Insert(fnName),
 		logBody.FileList.Insert(fnFile), int64(fnLine),
 		logBody.FileList.Insert(retFile), int64(retLine),
 	}
