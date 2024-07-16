@@ -166,7 +166,7 @@ func main() {
 			}
 			gAddr[goroutine.ID] = gCurr
 
-			evalScope, _ := proc.ThreadScope(targetGroup.Selected, thread)
+			evalScope := proc.FrameToScope(targetGroup.Selected, thread.ProcessMemory(), nil, stackFlames...)
 			args, _ := evalScope.FunctionArguments(evalCfg)
 			var evals []*proc.Variable
 			if exprArr, ok := importantAddrMap[breakpoint.Addr]; ok {
