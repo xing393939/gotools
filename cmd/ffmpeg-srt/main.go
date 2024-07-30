@@ -17,8 +17,6 @@ func main() {
 		return
 	}
 
-	wd = "C:\\Users\\bookan\\Downloads\\MIT RES.6-012 Introduction to Probability, Spring 2018麻省理工：概率学导论，2018春季"
-
 	// 遍历当前工作目录下的所有子文件夹
 	err = filepath.WalkDir(wd, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
