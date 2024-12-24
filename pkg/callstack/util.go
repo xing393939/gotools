@@ -28,7 +28,7 @@ var logBody = logBodyStruct{
 	FileList:     NewUniqueList(),
 }
 
-func LogPrint(bi *proc.BinaryInfo, gId, duration, gIndents int64, pc, ret uint64, args, evals []*proc.Variable) {
+func LogPrint(bi *proc.BinaryInfo, gId, duration, gIndents int64, pc, ret uint64, args, evalList []*proc.Variable) {
 	fnFile, fnLine, fnObj := bi.PCToLine(pc)
 	fnName := fnObj.Name
 	if gIndents == 0 {
@@ -51,7 +51,7 @@ func LogPrint(bi *proc.BinaryInfo, gId, duration, gIndents int64, pc, ret uint64
 			action[1] = append(action[1], logBody.FuncArgList.Insert(getArgStr(arg)))
 		}
 	}
-	for _, eval := range evals {
+	for _, eval := range evalList {
 		str := api.ConvertVar(eval).MultilineString("", "")
 		action[2] = append(action[2], logBody.FuncArgList.Insert(str))
 	}

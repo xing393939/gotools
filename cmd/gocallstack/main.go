@@ -113,7 +113,7 @@ func main() {
 	for bid, fn := range fnList {
 		_, err = targetGroup.Selected.SetBreakpoint(bid, fn, proc.UserBreakpoint, nil)
 		if err != nil {
-			fmt.Printf("\rSetBreakpoint err\n")
+			fmt.Printf("\rSetBreakpoint err: %s\n", err)
 		}
 		if bid%100 == 0 {
 			fmt.Printf("\rSetBreakpoint %d/%d", bid, len(fnList))
@@ -168,14 +168,14 @@ func main() {
 
 			evalScope := proc.FrameToScope(targetGroup.Selected, thread.ProcessMemory(), nil, stackFlames...)
 			args, _ := evalScope.FunctionArguments(evalCfg)
-			var evals []*proc.Variable
+			var evalList []*proc.Variable
 			if exprArr, ok := importantAddrMap[breakpoint.Addr]; ok {
 				for _, expr := range exprArr {
 					evalV, evalE := evalScope.EvalExpression(expr, evalImportantCfg)
 					if evalE != nil {
 						evalV = &proc.Variable{}
 					}
-					evals = append(evals, evalV)
+					evalList = append(evalList, evalV)
 				}
 			}
 
@@ -189,7 +189,7 @@ func main() {
 			}
 			callstack.LogPrint(
 				targetGroup.Selected.BinInfo(),
-				goroutine.ID, duration, indents, gCurr.Call.PC, gCurr.Ret, args, evals,
+				goroutine.ID, duration, indents, gCurr.Call.PC, gCurr.Ret, args, evalList,
 			)
 		}
 		err = targetGroup.Continue()
