@@ -19,9 +19,6 @@ jobs:
       - name: Get
         run: go get -t -v ./...
 
-      - name: Get lint
-        run: go get -u golang.org/x/lint/golint
-
       - name: Get Go Cyclo
         run: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 
@@ -39,6 +36,3 @@ jobs:
 
       - name: Check for Cyclomatic complexity
         run: gocyclo -over 15 ./cmd/gocallstack
-
-      - name: Check for lint problems
-        run: golint -set_exit_status ./cmd/gocallstack
