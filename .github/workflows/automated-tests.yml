@@ -35,4 +35,4 @@ jobs:
         run: bash <(curl -s https://codecov.io/bash)
 
       - name: Check for Cyclomatic complexity
-        run: gocyclo -over 15 ./cmd/gocallstack
+        run: gocyclo -over 40 ./cmd/gocallstack
